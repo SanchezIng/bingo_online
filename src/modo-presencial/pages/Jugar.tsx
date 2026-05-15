@@ -3,10 +3,9 @@ import { Link } from 'react-router-dom'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { useCartonesStore } from '@/lib/stores/cartones'
 import { usePatronesStore } from '@/lib/stores/patrones'
-import { casillasMarcadasDeCartonConNumeros } from '@/core/motor-juego'
 import type { CondicionVictoria } from '@/core/motor-juego'
 import type { Patron } from '@/core/motor-juego'
-import CartonGrid from '../components/CartonGrid'
+import CartonRankeado from '../components/CartonRankeado'
 import TecladoNumerico from '../components/TecladoNumerico'
 
 function descripcionCondicion(condicion: CondicionVictoria, patrones: Patron[]): string {
@@ -17,7 +16,8 @@ function descripcionCondicion(condicion: CondicionVictoria, patrones: Patron[]):
 }
 
 export default function Jugar() {
-  const { iniciadaEn, condicionVictoria, numerosSorteados, reiniciarSesion } = useSesionStore()
+  const { iniciadaEn, condicionVictoria, numerosSorteados, reiniciarSesion, rankingComputed } =
+    useSesionStore()
   const { cartones } = useCartonesStore()
   const { patrones } = usePatronesStore()
   const [pedirConfirma, setPedirConfirma] = useState(false)
@@ -38,6 +38,8 @@ export default function Jugar() {
   }
 
   const ultimosNumeros = [...numerosSorteados].reverse().slice(0, 10)
+  const ranking = rankingComputed()
+  const cartonMap = new Map(cartones.map((c) => [c.id, c]))
 
   function handleReiniciar() {
     if (!pedirConfirma) {
@@ -105,17 +107,21 @@ export default function Jugar() {
               </Link>
             </p>
           ) : (
-            cartones.map((carton) => {
-              const marcadas = casillasMarcadasDeCartonConNumeros(carton, numerosSorteados)
-              return (
-                <div key={carton.id} className="rounded-lg border border-gray-200 p-3">
-                  {carton.serie && (
-                    <p className="mb-1 text-xs font-medium text-gray-500">Serie {carton.serie}</p>
-                  )}
-                  <CartonGrid numeros={carton.numeros} casillasMarcadas={marcadas} />
-                </div>
-              )
-            })
+            ranking
+              .map((entradaRanking, idx) => {
+                const carton = cartonMap.get(entradaRanking.cartonId)
+                if (!carton) return null
+                return (
+                  <CartonRankeado
+                    key={carton.id}
+                    carton={carton}
+                    posicion={idx + 1}
+                    entrada={entradaRanking}
+                    numerosSorteados={numerosSorteados}
+                  />
+                )
+              })
+              .filter(Boolean)
           )}
         </div>
 

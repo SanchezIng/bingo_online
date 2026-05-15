@@ -6,6 +6,7 @@ import { useSesionStore } from '@/lib/stores/sesion'
 import { useCartonesStore } from '@/lib/stores/cartones'
 import { usePatronesStore } from '@/lib/stores/patrones'
 import type { Carton } from '@/core/cartones'
+import type { RankingEntry } from '@/core/motor-juego'
 
 vi.mock('@/lib/stores/sesion')
 vi.mock('@/lib/stores/cartones')
@@ -14,7 +15,7 @@ vi.mock('../components/TecladoNumerico', () => ({
   default: () => <div data-testid="teclado-numerico" />,
 }))
 
-const cartonConNumeros: Carton = {
+const cartonBase: Carton = {
   id: 'a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5',
   serie: '',
   creadoEn: new Date().toISOString(),
@@ -26,6 +27,14 @@ const cartonConNumeros: Carton = {
     G: [46, 47, 48, 49, 50],
     O: [61, 62, 63, 64, 65],
   },
+}
+
+function rankingPara(cartones: Carton[], faltan: number[] = []): RankingEntry[] {
+  return cartones.map((c, i) => ({
+    cartonId: c.id,
+    faltan: faltan[i] ?? 10,
+    ganado: false,
+  }))
 }
 
 function mockSesion(overrides: Partial<ReturnType<typeof useSesionStore>> = {}) {
@@ -123,16 +132,17 @@ describe('Jugar', () => {
     renderJugar()
     const historial = screen.getByRole('region', { name: /historial/i })
     expect(historial).toBeInTheDocument()
-    // El último sorteado (33) aparece primero en el historial
     const chips = historial.querySelectorAll('span')
     expect(chips[0].textContent).toBe('33')
   })
 
   it('marcar número 5 resalta la casilla correspondiente en el cartón', () => {
-    mockSesion({ numerosSorteados: [5] })
-    mockCartones([cartonConNumeros])
+    mockSesion({
+      numerosSorteados: [5],
+      rankingComputed: vi.fn(() => rankingPara([cartonBase], [23])),
+    })
+    mockCartones([cartonBase])
     renderJugar()
-    // CartonGrid muestra el número 5 con clase bg-green-200 cuando está marcado
     const celdaMarcada = screen
       .getAllByText('5')
       .find((el) => el.classList.contains('bg-green-200') || el.closest('[class*="bg-green-200"]'))
@@ -140,10 +150,12 @@ describe('Jugar', () => {
   })
 
   it('número no sorteado no aparece resaltado', () => {
-    mockSesion({ numerosSorteados: [5] })
-    mockCartones([cartonConNumeros])
+    mockSesion({
+      numerosSorteados: [5],
+      rankingComputed: vi.fn(() => rankingPara([cartonBase], [23])),
+    })
+    mockCartones([cartonBase])
     renderJugar()
-    // El número 2 no está sorteado, debe aparecer sin clase de marcado
     const celda2 = screen.getByText('2')
     expect(celda2.className).not.toContain('bg-green-200')
   })
@@ -173,5 +185,163 @@ describe('Jugar', () => {
     fireEvent.click(screen.getByRole('button', { name: /reiniciar/i }))
     fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
     expect(mockReiniciar).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Jugar — ranking dinámico', () => {
+  const cartonA: Carton = {
+    id: 'id-carton-a000-0000-0000-000000000001',
+    serie: 'A',
+    creadoEn: new Date().toISOString(),
+    fuente: 'manual',
+    numeros: {
+      B: [1, 2, 3, 4, 6],
+      I: [16, 18, 19, 20, 21],
+      N: [31, 32, 'FREE', 35, 36],
+      G: [46, 47, 48, 49, 50],
+      O: [61, 62, 63, 64, 65],
+    },
+  }
+  const cartonB: Carton = {
+    id: 'id-carton-b000-0000-0000-000000000002',
+    serie: 'B',
+    creadoEn: new Date().toISOString(),
+    fuente: 'manual',
+    numeros: {
+      B: [5, 7, 8, 9, 10],
+      I: [17, 22, 23, 24, 25],
+      N: [33, 37, 'FREE', 38, 39],
+      G: [51, 52, 53, 54, 55],
+      O: [66, 67, 68, 69, 70],
+    },
+  }
+  const cartonC: Carton = {
+    id: 'id-carton-c000-0000-0000-000000000003',
+    serie: 'C',
+    creadoEn: new Date().toISOString(),
+    fuente: 'manual',
+    numeros: {
+      B: [11, 12, 13, 14, 15],
+      I: [26, 27, 28, 29, 30],
+      N: [40, 41, 'FREE', 42, 43],
+      G: [56, 57, 58, 59, 60],
+      O: [71, 72, 73, 74, 75],
+    },
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockPatrones()
+  })
+
+  it('ordena los cartones según faltan (menor primero): B(2), A(5), C(8)', () => {
+    // ranking retorna B primero (faltan 2), luego A (5), luego C (8)
+    mockSesion({
+      rankingComputed: vi.fn(() => [
+        { cartonId: cartonB.id, faltan: 2, ganado: false },
+        { cartonId: cartonA.id, faltan: 5, ganado: false },
+        { cartonId: cartonC.id, faltan: 8, ganado: false },
+      ]),
+    })
+    mockCartones([cartonA, cartonB, cartonC]) // orden original A, B, C
+
+    render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    const textosFaltan = screen.getAllByText(/Faltan \d+ casillas?/)
+    expect(textosFaltan[0].textContent).toBe('Faltan 2 casillas')
+    expect(textosFaltan[1].textContent).toBe('Faltan 5 casillas')
+    expect(textosFaltan[2].textContent).toBe('Faltan 8 casillas')
+  })
+
+  it('muestra posiciones #1, #2, #3 en el orden del ranking', () => {
+    mockSesion({
+      rankingComputed: vi.fn(() => [
+        { cartonId: cartonB.id, faltan: 2, ganado: false },
+        { cartonId: cartonA.id, faltan: 5, ganado: false },
+        { cartonId: cartonC.id, faltan: 8, ganado: false },
+      ]),
+    })
+    mockCartones([cartonA, cartonB, cartonC])
+
+    render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('#1')).toBeInTheDocument()
+    expect(screen.getByText('#2')).toBeInTheDocument()
+    expect(screen.getByText('#3')).toBeInTheDocument()
+  })
+
+  it('muestra badge MUY CERCA en el cartón con faltan <= 2', () => {
+    mockSesion({
+      rankingComputed: vi.fn(() => [
+        { cartonId: cartonB.id, faltan: 2, ganado: false },
+        { cartonId: cartonA.id, faltan: 5, ganado: false },
+      ]),
+    })
+    mockCartones([cartonA, cartonB])
+
+    render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/MUY CERCA/)).toBeInTheDocument()
+  })
+
+  it('muestra badge BINGO cuando un cartón ha ganado', () => {
+    mockSesion({
+      rankingComputed: vi.fn(() => [{ cartonId: cartonA.id, faltan: 0, ganado: true }]),
+    })
+    mockCartones([cartonA])
+
+    render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/BINGO/)).toBeInTheDocument()
+  })
+
+  it('actualiza el orden cuando cambia el ranking al rerenderizar', () => {
+    const mockRanking = vi.fn(() => [
+      { cartonId: cartonB.id, faltan: 2, ganado: false },
+      { cartonId: cartonA.id, faltan: 5, ganado: false },
+    ])
+    mockSesion({ rankingComputed: mockRanking })
+    mockCartones([cartonA, cartonB])
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    // Primer render: B primero (faltan 2), A segundo (faltan 5)
+    let textos = screen.getAllByText(/Faltan \d+ casillas?/)
+    expect(textos[0].textContent).toBe('Faltan 2 casillas')
+
+    // Cambia el ranking: ahora A primero (faltan 1), B segundo (faltan 4)
+    mockRanking.mockReturnValue([
+      { cartonId: cartonA.id, faltan: 1, ganado: false },
+      { cartonId: cartonB.id, faltan: 4, ganado: false },
+    ])
+    rerender(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    textos = screen.getAllByText(/Faltan \d+ casillas?/)
+    expect(textos[0].textContent).toBe('Faltan 1 casilla')
+    expect(textos[1].textContent).toBe('Faltan 4 casillas')
   })
 })
