@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F4.3 completada)
-**Última subfase completada:** **F4.3 — Historial de números sorteados y reinicio de sesión**
-**Próxima subfase:** **F5.1 — Integración de Tesseract.js**
+**Última actualización:** 2026-05-15 (F5.1 completada)
+**Última subfase completada:** **F5.1 — Integración de Tesseract.js y captura de imagen**
+**Próxima subfase:** **F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 10 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅)
-- Porcentaje estimado: 59%
+- Subfases completadas: 11 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅)
+- Porcentaje estimado: 65%
 
 ---
 
@@ -94,6 +94,21 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
 
+### F5.1 — Integración de Tesseract.js y captura de imagen (completada 2026-05-15)
+
+Módulo `src/core/ocr/` con tipos, función OCR y UI de captura. Sin post-proceso aún (eso es F5.2):
+
+- **`tesseract.js 7.0.0`** instalado. `allowBuilds: tesseract.js: true` añadido en `pnpm-workspace.yaml`.
+- **`src/core/ocr/types.ts`:** `BboxOCR`, `BloqueOCR`, `ResultadoOCRBruto`, `OcrError`, `OcrErrorTipo`
+- **`src/core/ocr/tesseract.ts`:** `procesarImagenOCR(file, onProgreso?)` — worker con lang='eng', whitelist='0123456789', extrae words de `blocks→paragraphs→lines→words`, `terminate()` garantizado en `finally`, retorna `Result<ResultadoOCRBruto, OcrError>`
+- **`src/core/ocr/index.ts`:** API pública del módulo
+- **`src/modo-presencial/pages/CrearCartonOCR.tsx`:** input `accept="image/*" capture="environment"`, preview, barra de progreso, chips de números detectados con confianza en tooltip, sección `<details>` para texto bruto
+- **Router:** ruta `/cartones/foto` con `React.lazy` + `Suspense` — chunk separado de 18 kB, no va en bundle principal
+- **`MisCartones.tsx`:** botón "Crear con foto (OCR)" → `/cartones/foto`
+- **`vercel.json`:** `cdn.jsdelivr.net` añadido a `connect-src` para descarga de modelos Tesseract
+- **`src/test-setup.ts`:** mock global de `URL.createObjectURL` / `URL.revokeObjectURL` (jsdom no los implementa)
+- **Tests:** 15 tests nuevos (8 tesseract + 7 CrearCartonOCR). Total: **234 tests verdes**.
+
 ### F4.3 — Historial de números sorteados y reinicio de sesión (completada 2026-05-15)
 
 Modal reutilizable, historial agrupado por serie B/I/N/G/O, reiniciar con confirmación explícita y persistencia de sesión a recargas:
@@ -138,7 +153,7 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **pnpm 11.1.2** instalado globalmente. Configuración endurecida en `pnpm-workspace.yaml`.
 - **`allowBuilds` en pnpm 11** usa formato de mapa booleano (`esbuild: true`), no lista.
 - **v1 sin backend.** Todo en `localStorage`. Supabase entra en v2.
-- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand 5 + Zod 4 + uuid 14. Tesseract.js entra en F5.
+- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand 5 + Zod 4 + uuid 14 + **Tesseract.js 7.0.0** (instalado en F5.1).
 - **Node:** v24.15.0 (supera el mínimo v22 LTS, compatible).
 - **react-router-dom:** versión 7.x instalada. API compatible con lo que describe la guía.
 - **gitleaks:** vía `pnpm dlx gitleaks protect --staged --redact` en `.husky/pre-commit`.
@@ -190,24 +205,26 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F5.1)
+## Notas para la próxima sesión de Claude Code (F5.2)
 
-Al arrancar la sesión de **F5.1**, leer en este orden:
+Al arrancar la sesión de **F5.2**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-4.3.md`
-4. Sección F5.1 de `docs/guia_desarrollo.md`
+3. `progreso/fase-5.1.md`
+4. Sección F5.2 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F5.1:** verificar que `pnpm test:run` pasa 219 tests verdes.
+**Prerequisito de F5.2:** verificar que `pnpm test:run` pasa 234 tests verdes.
 
-**F5.1 debe:**
+**F5.2 debe:**
 
-- Instalar `tesseract.js` (revisar compatibilidad con Vite 5 y workers antes de instalar)
-- Crear `src/core/ocr/` (la carpeta NO debe existir antes de F5.1 — verificar)
-- Crear tipos OCR y función `procesarImagen(file: File): Promise<Result<NumerosCartonParcial, OcrError>>`
-- UI mínima para subir/capturar imagen
-- Las fotos JAMÁS salen del dispositivo — OCR 100% en cliente con Tesseract.js
+- Añadir `GrillaDetectada` a `src/core/ocr/types.ts`
+- Crear `src/core/ocr/post-process.ts` con `estructurarEnGrilla` y `consolidarCandidatos`
+- Heurística: dividir imagen en grilla 5×5 por coordenadas del centro de cada bloque
+- Validar rango por columna (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75)
+- Celda (2,2) es FREE — nunca asignar candidatos
+- Tests con fixtures (sin llamada real a Tesseract)
+- `NumerosCartonParcial` ya existe en `src/core/cartones/types.ts` — reusar
 
 ---
 
@@ -215,6 +232,7 @@ Al arrancar la sesión de **F5.1**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                           |
 | 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                            |
 | 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                  |
 | 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                      |
