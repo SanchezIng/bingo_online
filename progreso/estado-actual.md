@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F4.1 completada)
-**Última subfase completada:** **F4.1 — Teclado numérico y registro de números sorteados**
-**Próxima subfase:** **F4.2 — Ranking dinámico de cartones**
+**Última actualización:** 2026-05-15 (F4.2 completada)
+**Última subfase completada:** **F4.2 — Ranking dinámico de cartones**
+**Próxima subfase:** **F4.3 — Historial de números sorteados y reinicio de sesión**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 8 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅)
-- Porcentaje estimado: 47%
+- Subfases completadas: 9 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅)
+- Porcentaje estimado: 53%
 
 ---
 
@@ -94,6 +94,14 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
 
+### F4.2 — Ranking dinámico de cartones (completada 2026-05-15)
+
+Lista de cartones en `/jugar` reordenada en tiempo real por proximidad al patrón:
+
+- **`src/modo-presencial/components/CartonRankeado.tsx`:** componente `React.memo` con posición (`#N`), badge (🏆 BINGO / 🔥 MUY CERCA / 🎯 CASI), `CartonGrid` con casillas marcadas, y texto "Faltan N casillas". Badge BINGO cuando `ganado=true`; MUY CERCA cuando `faltan <= 2`; CASI cuando `faltan <= 5`.
+- **`src/modo-presencial/pages/Jugar.tsx`:** llama `rankingComputed()` en cada render, construye `cartonMap` y renderiza `CartonRankeado` en orden del ranking. `key={carton.id}` para memoización efectiva.
+- **Tests:** 13 tests nuevos (CartonRankeado) + 5 tests de ranking en Jugar. Total: **209 tests verdes**.
+
 ### F4.1 — Teclado numérico y registro de números sorteados (completada 2026-05-15)
 
 UI de juego en tiempo real: teclado numérico 1-75 y marcado de casillas en cartones:
@@ -140,8 +148,10 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **PatronCanvas — grilla controlada:** el componente recibe `grilla: boolean[][]` + `onChange`. El estado se gestiona en el padre (EditorPatrones).
 - **EditorPatrones — validación de grilla:** mínimo 3 casillas activas (1 FREE + 2 libres) para guardar un patrón.
 - **`EstadoSesion` vs store de sesión:** el tipo `EstadoSesion` usa `condicionActiva`; el store usa `condicionVictoria`. El mapping se hace explícito en `persistirSesion` y `cargarSesion`.
-- **`rankingComputed`:** función getter en el store de sesión que llama `useCartonesStore.getState()` y `usePatronesStore.getState()`. Calcula on-demand. No es reactivo por suscripción — el ranking reactivo en tiempo real se implementará en F4.2.
+- **`rankingComputed`:** función getter en el store de sesión que llama `useCartonesStore.getState()` y `usePatronesStore.getState()`. Calcula on-demand. En F4.2 se confirmó que llamarlo en el render de `Jugar.tsx` es suficiente para la reactividad — no se necesita un hook adicional.
+- **`CartonRankeado`:** props `{ carton, posicion, entrada, numerosSorteados }`. Usa `React.memo`. Pasa `numerosSorteados` (no `Set<string>`) para que memo evite re-renders cuando solo cambia estado local de `Jugar` (ej: `pedirConfirma`).
 - **`TecladoNumerico.tsx`:** usa el store de sesión directamente (sin props). Números en orden fila×columna para `grid-cols-5`: fórmula `n = col*15 + row + 1` donde `i = row*5 + col`.
+- **Tests de Jugar con cartones:** deben mockear `rankingComputed` con entradas válidas. Sin ranking mock, `Jugar.tsx` no renderiza cartones aunque `mockCartones` tenga datos.
 - **`serieDe(n)`:** función local en TecladoNumerico: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75.
 - **`role="region"`:** el div del historial en Jugar.tsx lleva `role="region"` + `aria-label` para que sea consultable por `getByRole('region')` en tests.
 
@@ -167,36 +177,36 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F4.2)
+## Notas para la próxima sesión de Claude Code (F4.3)
 
-Al arrancar la sesión de **F4.2**, leer en este orden:
+Al arrancar la sesión de **F4.3**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-4.1.md`
-4. Sección F4.2 de `docs/guia_desarrollo.md`
+3. `progreso/fase-4.2.md`
+4. Sección F4.3 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F4.2:** verificar que `pnpm test:run` pasa 191 tests verdes.
+**Prerequisito de F4.3:** verificar que `pnpm test:run` pasa 209 tests verdes.
 
-**F4.2 debe:**
+**F4.3 debe:**
 
-- En `/jugar`, reordenar la lista de cartones según el ranking dinámico (`rankingComputed`)
-- El cartón más cercano al patrón aparece primero
-- Indicador visual de cuántas casillas faltan por carton
-- Tests de reordenación
+- Crear `HistorialSorteados.tsx`: números agrupados por serie B/I/N/G/O en un modal
+- Mejorar persistencia: `cargarSesion()` al montar la app (actualmente no se llama en ningún `useEffect`)
+- Tests de historial, reinicio y recarga
 
 ---
 
 ## Bitácora rápida
 
-| Fecha      | Evento                                                                                                         |
-| ---------- | -------------------------------------------------------------------------------------------------------------- |
-| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                       |
-| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.             |
-| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                 |
-| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                     |
-| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                 |
-| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                  |
-| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.  |
-| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.            |
-| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales. |
+| Fecha      | Evento                                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                       |
+| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                             |
+| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                 |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                     |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                 |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                  |
+| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                  |
+| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                            |
+| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                 |
+| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales. |
