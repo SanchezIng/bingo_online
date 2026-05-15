@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F2.2 completada)
-**Última subfase completada:** **F2.2 — Almacenamiento, store y UI de creación manual**
-**Próxima subfase:** **F3.1 — Motor de juego — marcado y condición de victoria**
+**Última actualización:** 2026-05-15 (F3.1 completada)
+**Última subfase completada:** **F3.1 — Motor de juego — marcado y condición de victoria**
+**Próxima subfase:** **F3.2 — Editor de patrones libres**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 4 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅)
-- Porcentaje estimado: 24%
+- Subfases completadas: 5 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅)
+- Porcentaje estimado: 29%
 
 ---
 
@@ -69,6 +69,19 @@ Capa de persistencia, Zustand store y UI end-to-end para crear/listar/borrar car
 - **Tests:** 26 tests nuevos (13 almacenamiento + 6 formulario + 7 MisCartones). Total: 79 tests verdes.
 - **Cobertura:** `core/almacenamiento/` → 85.84% statements, 79.31% branches, 80% funciones (supera ≥ 70%)
 
+### F3.1 — Motor de juego — marcado y condición de victoria (completada 2026-05-15)
+
+Módulo `src/core/motor-juego/` con lógica pura de marcado, evaluación de condición y ranking. Sin UI, sin side-effects:
+
+- **`types.ts`:** `CondicionVictoria` (n_marcados / patron / cartonLleno), `Patron` (grilla boolean[][]), `EstadoMarcado`, `RankingEntry`, `EstadoSesion`
+- **`marcado.ts`:** `casillasMarcadasDeCartonConNumeros(carton, numerosSorteados)` — casilla FREE (2,2) siempre incluida, coordenadas `"fila,columna"` 0-indexed
+- **`victoria.ts`:** `evaluarCondicion(casillasMarcadas, condicion, patrones?)` — 3 tipos de condición; patrón no encontrado retorna `{ ganado: false, faltan: Infinity }`
+- **`ranking.ts`:** `calcularRanking(cartones, sorteados, condicion, patrones)` — ganadores primero, luego por `faltan` ascendente; sort estable
+- **`index.ts`:** API pública del módulo
+- **Tests:** 41 tests nuevos (13 marcado + 17 victoria + 11 ranking). Total: 120 tests verdes.
+- **Cobertura:** `core/motor-juego/` → 100% statements, 96.29% branches, 100% funciones (supera ≥ 85%)
+- **vitest.config.ts:** añadido `coverage.exclude: ['**/types.ts']` — excluye archivos de solo tipos (sin código ejecutable) del reporte de cobertura
+
 ---
 
 ## Decisiones técnicas vivas (las que afectan trabajo futuro)
@@ -86,8 +99,12 @@ Capa de persistencia, Zustand store y UI end-to-end para crear/listar/borrar car
 - **Patrón Result:** `type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E }`. Definido en `core/cartones/types.ts`.
 - **Zustand 5.x:** API de `create()` igual a v4 para uso básico. Importar con `import { create } from 'zustand'`.
 - **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/cartones')` y `vi.mocked(useCartonesStore).mockReturnValue(...)` funciona para llamadas sin selector.
-- **`leerPatrones` y `guardarPatrones`:** usan `unknown[]` como tipo provisional. Se tipará con `Patron` en F3.2.
+- **`leerPatrones` y `guardarPatrones`:** usan `unknown[]` como tipo provisional. **F3.2 debe tiparlo con `Patron` de `core/motor-juego/types.ts`.**
 - **`leerSesion` y `guardarSesion`:** usan `unknown` como tipo provisional. Se tipará con el store de sesión en F3.3.
+- **Coordenadas motor-juego:** `"fila,columna"` 0-indexed. B→col0, I→col1, N→col2, G→col3, O→col4. FREE en `"2,2"`.
+- **`evaluarCondicion` — patrón no encontrado:** retorna `{ ganado: false, faltan: Infinity }`.
+- **`calcularRanking` — sort estable:** en empate de `faltan`, preserva orden del array original.
+- **vitest.config.ts `coverage.exclude`:** añadido `['**/types.ts']`. Actualizar si se añaden más patrones de exclusión.
 
 ---
 
@@ -110,17 +127,23 @@ Capa de persistencia, Zustand store y UI end-to-end para crear/listar/borrar car
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F3.1)
+## Notas para la próxima sesión de Claude Code (F3.2)
 
-Al arrancar la sesión de **F3.1**, leer en este orden:
+Al arrancar la sesión de **F3.2**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-2.2.md`
-4. `docs/especificaciones.md` secciones 3.2 (RF-09 a RF-15), 7.3 (tipos Patron)
-5. Sección F3.1 de `docs/guia_desarrollo.md`
+3. `progreso/fase-3.1.md`
+4. Sección F3.2 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F3.1:** verificar que `pnpm test:run` pasa 79 tests verdes y `pnpm build` genera dist/.
+**Prerequisito de F3.2:** verificar que `pnpm test:run` pasa 120 tests verdes y `pnpm build` genera dist/.
+
+**F3.2 debe:**
+
+- Crear la UI del editor de patrones (`EditorPatrones.tsx`) con grilla 5×5 táctil
+- Tipar `leerPatrones` / `guardarPatrones` en `core/almacenamiento/` con `Patron` de `core/motor-juego/types.ts`
+- Crear store Zustand para patrones (`src/lib/stores/patrones.ts`)
+- Página `/patrones` con listado, creación y borrado de patrones
 
 ---
 
@@ -133,3 +156,4 @@ Al arrancar la sesión de **F3.1**, leer en este orden:
 | 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.     |
 | 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.         |
 | 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.     |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.      |
