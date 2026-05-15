@@ -168,16 +168,16 @@ describe('Jugar', () => {
     expect(screen.getByRole('link', { name: /añadir cartón/i })).toBeInTheDocument()
   })
 
-  it('botón Reiniciar muestra confirmación en dos pasos', () => {
+  it('botón Reiniciar abre modal de confirmación', () => {
     mockSesion()
     mockCartones()
     renderJugar()
-    const btnReiniciar = screen.getByRole('button', { name: /reiniciar/i })
-    fireEvent.click(btnReiniciar)
-    expect(screen.getByRole('button', { name: /confirmar/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /reiniciar/i }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText(/cartones y patrones se mantienen/i)).toBeInTheDocument()
   })
 
-  it('confirmar reinicio llama reiniciarSesion', () => {
+  it('confirmar reinicio en modal llama reiniciarSesion', () => {
     const mockReiniciar = vi.fn()
     mockSesion({ reiniciarSesion: mockReiniciar })
     mockCartones()
@@ -185,6 +185,35 @@ describe('Jugar', () => {
     fireEvent.click(screen.getByRole('button', { name: /reiniciar/i }))
     fireEvent.click(screen.getByRole('button', { name: /confirmar/i }))
     expect(mockReiniciar).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancelar reinicio cierra el modal sin llamar reiniciarSesion', () => {
+    const mockReiniciar = vi.fn()
+    mockSesion({ reiniciarSesion: mockReiniciar })
+    mockCartones()
+    renderJugar()
+    fireEvent.click(screen.getByRole('button', { name: /reiniciar/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancelar/i }))
+    expect(mockReiniciar).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('botón Ver historial abre modal con historial agrupado', () => {
+    mockSesion({ numerosSorteados: [5, 18, 33] })
+    mockCartones()
+    renderJugar()
+    fireEvent.click(screen.getByRole('button', { name: /ver historial/i }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText('B')).toBeInTheDocument()
+    expect(screen.getByText('I')).toBeInTheDocument()
+  })
+
+  it('llama cargarSesion al montar el componente', () => {
+    const mockCargar = vi.fn()
+    mockSesion({ cargarSesion: mockCargar })
+    mockCartones()
+    renderJugar()
+    expect(mockCargar).toHaveBeenCalledTimes(1)
   })
 })
 
