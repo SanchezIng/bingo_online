@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F3.1 completada)
-**Última subfase completada:** **F3.1 — Motor de juego — marcado y condición de victoria**
-**Próxima subfase:** **F3.2 — Editor de patrones libres**
+**Última actualización:** 2026-05-15 (F3.2 completada)
+**Última subfase completada:** **F3.2 — Editor de patrones libres**
+**Próxima subfase:** **F3.3 — Integración del motor con stores y configuración de victoria**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 5 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅)
-- Porcentaje estimado: 29%
+- Subfases completadas: 6 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅)
+- Porcentaje estimado: 35%
 
 ---
 
@@ -82,6 +82,18 @@ Módulo `src/core/motor-juego/` con lógica pura de marcado, evaluación de cond
 - **Cobertura:** `core/motor-juego/` → 100% statements, 96.29% branches, 100% funciones (supera ≥ 85%)
 - **vitest.config.ts:** añadido `coverage.exclude: ['**/types.ts']` — excluye archivos de solo tipos (sin código ejecutable) del reporte de cobertura
 
+### F3.2 — Editor de patrones libres (completada 2026-05-15)
+
+UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
+
+- **`core/almacenamiento/localStorage.ts`:** `leerPatrones`/`guardarPatrones` tipadas con `Patron` (importa desde `@/core/motor-juego`). Validación estructural al leer.
+- **`src/lib/stores/patrones.ts`:** Zustand store con `patrones[]` + `error`, actions `cargarPatrones`, `agregarPatron`, `eliminarPatron`, `renombrarPatron`
+- **`src/modo-presencial/components/patronUtils.ts`:** función `grillaInicial()` extraída a módulo propio (evita warning de react-refresh)
+- **`src/modo-presencial/components/PatronCanvas.tsx`:** grilla 5×5 táctil con modos dibujar/borrar, arrastre con onPointerDown/onPointerEnter, celda FREE [2][2] siempre activa y deshabilitada, tap targets ≥ 44px
+- **`src/modo-presencial/pages/EditorPatrones.tsx`:** página única en `/patrones` con vista lista (mini-preview de cada patrón) y vista crear (inline). Validación: nombre obligatorio (max 30), al menos 2 casillas activas además del FREE
+- **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
+- **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
+
 ---
 
 ## Decisiones técnicas vivas (las que afectan trabajo futuro)
@@ -98,13 +110,16 @@ Módulo `src/core/motor-juego/` con lógica pura de marcado, evaluación de cond
 - **Zod 4.x:** `z.string().uuid()` valida RFC 9562: requiere versión `[1-8]` y variante `[89ab]`. Usar UUIDs generados por `uuidv4()` en fixtures de tests (no hardcoded con todos ceros).
 - **Patrón Result:** `type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E }`. Definido en `core/cartones/types.ts`.
 - **Zustand 5.x:** API de `create()` igual a v4 para uso básico. Importar con `import { create } from 'zustand'`.
-- **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/cartones')` y `vi.mocked(useCartonesStore).mockReturnValue(...)` funciona para llamadas sin selector.
-- **`leerPatrones` y `guardarPatrones`:** usan `unknown[]` como tipo provisional. **F3.2 debe tiparlo con `Patron` de `core/motor-juego/types.ts`.**
+- **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/cartones')` y `vi.mocked(useCartonesStore).mockReturnValue(...)` funciona para llamadas sin selector. Mismo patrón aplica para `usePatronesStore`.
+- **`leerPatrones` y `guardarPatrones`:** tipadas con `Patron[]` desde F3.2. Importan `Patron` desde `@/core/motor-juego`.
 - **`leerSesion` y `guardarSesion`:** usan `unknown` como tipo provisional. Se tipará con el store de sesión en F3.3.
 - **Coordenadas motor-juego:** `"fila,columna"` 0-indexed. B→col0, I→col1, N→col2, G→col3, O→col4. FREE en `"2,2"`.
 - **`evaluarCondicion` — patrón no encontrado:** retorna `{ ganado: false, faltan: Infinity }`.
 - **`calcularRanking` — sort estable:** en empate de `faltan`, preserva orden del array original.
 - **vitest.config.ts `coverage.exclude`:** añadido `['**/types.ts']`. Actualizar si se añaden más patrones de exclusión.
+- **react-refresh/only-export-components:** no exportar funciones utilitarias desde archivos de componentes. Usar módulos separados (ej: `patronUtils.ts`).
+- **PatronCanvas — grilla controlada:** el componente recibe `grilla: boolean[][]` + `onChange`. El estado se gestiona en el padre (EditorPatrones).
+- **EditorPatrones — validación de grilla:** mínimo 3 casillas activas (1 FREE + 2 libres) para guardar un patrón.
 
 ---
 
@@ -127,33 +142,35 @@ Módulo `src/core/motor-juego/` con lógica pura de marcado, evaluación de cond
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F3.2)
+## Notas para la próxima sesión de Claude Code (F3.3)
 
-Al arrancar la sesión de **F3.2**, leer en este orden:
+Al arrancar la sesión de **F3.3**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-3.1.md`
-4. Sección F3.2 de `docs/guia_desarrollo.md`
+3. `progreso/fase-3.2.md`
+4. Sección F3.3 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F3.2:** verificar que `pnpm test:run` pasa 120 tests verdes y `pnpm build` genera dist/.
+**Prerequisito de F3.3:** verificar que `pnpm test:run` pasa 139 tests verdes y `pnpm build` genera dist/.
 
-**F3.2 debe:**
+**F3.3 debe:**
 
-- Crear la UI del editor de patrones (`EditorPatrones.tsx`) con grilla 5×5 táctil
-- Tipar `leerPatrones` / `guardarPatrones` en `core/almacenamiento/` con `Patron` de `core/motor-juego/types.ts`
-- Crear store Zustand para patrones (`src/lib/stores/patrones.ts`)
-- Página `/patrones` con listado, creación y borrado de patrones
+- Crear `src/lib/stores/sesion.ts` — store de sesión con `condicionVictoria`, `numerosSorteados`, actions y selector `rankingComputed`
+- Crear `src/modo-presencial/pages/ConfiguracionJuego.tsx` — radio buttons para los 3 tipos de condición, botón "Iniciar sesión"
+- Actualizar `Jugar.tsx` para mostrar la condición activa y el estado de la sesión
+- Tipar `leerSesion`/`guardarSesion` con el tipo de sesión
+- Tests de integración del store de sesión
 
 ---
 
 ## Bitácora rápida
 
-| Fecha      | Evento                                                                                             |
-| ---------- | -------------------------------------------------------------------------------------------------- |
-| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.           |
-| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde. |
-| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.     |
-| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.         |
-| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.     |
-| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.      |
+| Fecha      | Evento                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------- |
+| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                      |
+| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.            |
+| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                    |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                 |
+| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales. |
