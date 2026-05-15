@@ -1,0 +1,166 @@
+{
+  "version": "2.0",
+  "fecha_generacion": "2026-05-14",
+  "skill_version": "project-kickstart v2.0",
+  "proyecto": {
+    "nombre": "Bingo Digital",
+    "descripcion": "PWA para marcar cartones de bingo presencial desde el celular, con OCR, patrones libres y ranking dinámico. v1 sin backend (todo en localStorage); v2 con Supabase para modo virtual.",
+    "tipo": "web-app-pwa",
+    "tamano": "mediano"
+  },
+  "config": {
+    "idioma": "es",
+    "formato": "md",
+    "modo": "completo",
+    "equipo": "solo",
+    "nivel_experiencia": "aprendiendo"
+  },
+  "contexto_inicial": {
+    "tenia_contexto_previo": true,
+    "archivos_referenciados": [
+      "/mnt/user-data/uploads/bingo-digital-design.md"
+    ]
+  },
+  "stack": {
+    "lenguaje_principal": "typescript",
+    "framework": "react-18",
+    "build_tool": "vite-5",
+    "estilos": "tailwind-3",
+    "estado_global": "zustand-4",
+    "validacion": "zod",
+    "ocr": "tesseract.js-5",
+    "pwa": "workbox-via-vite-plugin-pwa",
+    "tests": ["vitest", "react-testing-library"],
+    "linter": "eslint-9",
+    "formatter": "prettier-3",
+    "hooks": ["husky-9", "lint-staged-15", "commitlint", "gitleaks-8"],
+    "ci": "github-actions",
+    "hosting": "vercel",
+    "observabilidad": ["sentry", "vercel-analytics"],
+    "package_manager": "pnpm-11",
+    "node_lts": "22",
+    "base_datos_v1": null,
+    "base_datos_v2": "supabase-postgres",
+    "pagos_v2.5": "culqi"
+  },
+  "arquitectura": "modular-monolitica-por-dominio",
+  "seguridad": {
+    "owasp_aplicado_v1": "basico",
+    "owasp_planeado_v2": "asvs_l2",
+    "ampliada": ["secrets", "deps", "logging"],
+    "ampliada_v2": ["threat_model", "backup", "regulacion"],
+    "regulacion_v1": "none",
+    "regulacion_v2": "ley29733",
+    "pnpm_endurecido": {
+      "minimumReleaseAge_minutos": 1440,
+      "strictDepBuilds": true,
+      "blockExoticSubdeps": true
+    }
+  },
+  "practicas_dev": {
+    "testing_strategy": "vitest desde F1 con cobertura ≥80% en core/motor-juego/",
+    "pre_commit_hooks": ["eslint", "prettier", "gitleaks", "typecheck-lint-staged"],
+    "commit_msg_hook": "commitlint con config-conventional",
+    "adr_inicial": true,
+    "adrs_generados": [
+      "0001-alcance-v1-sin-backend",
+      "0002-pnpm-sobre-npm",
+      "0003-stack-frontend"
+    ],
+    "branching": "trunk-simple",
+    "convention_commits": true,
+    "tags_intermedios": ["v0.4.0 al cerrar F4", "v0.5.0 al cerrar F5", "v0.9.0 al cerrar F7", "v1.0.0 al cerrar F8"]
+  },
+  "respuestas_entrevista": {
+    "nombre": "Bingo Digital",
+    "tipo": "web-app-pwa",
+    "tamano": "mediano",
+    "idioma_documentos": "espanol",
+    "formato_documentos": "solo-markdown",
+    "equipo": "uno-mismo + claude-code",
+    "nivel_experiencia": "aprendiendo-react-y-supabase",
+    "package_manager_decidido": "pnpm",
+    "package_manager_razon": "ataques supply chain en npm 2025-2026 (Shai-Hulud, PackageGate); pnpm tiene minimumReleaseAge nativo",
+    "alcance_v1": "solo modo presencial sin backend; todo en localStorage",
+    "alcance_v1_razon": "validar la parte diferenciadora (OCR + patrones libres + ranking) antes de invertir en backend",
+    "hosting_recomendado": "vercel",
+    "subdominio_v1": "bingo-digital.vercel.app",
+    "ci_decidido": "github-actions en cada push",
+    "observabilidad_decidida": "sentry con sendDefaultPii:false + beforeSend filtrando cartones; vercel-analytics",
+    "aviso_privacidad_v1": "no aplica (no PII en v1)",
+    "fases_count": 8,
+    "subfases_count": 17,
+    "duracion_estimada": "3-4 semanas",
+    "repo": "github-privado-plan-free",
+    "commits_convention": "conventional-commits"
+  },
+  "fases_planeadas": [
+    {
+      "id": "F1",
+      "titulo": "Setup del proyecto",
+      "subfases": [
+        { "id": "F1.1", "titulo": "Bootstrap del proyecto y tubería de calidad" },
+        { "id": "F1.2", "titulo": "Estructura de carpetas inicial, routing y deploy a Vercel" }
+      ]
+    },
+    {
+      "id": "F2",
+      "titulo": "Núcleo de cartones",
+      "subfases": [
+        { "id": "F2.1", "titulo": "Modelo, validación y generador de cartones" },
+        { "id": "F2.2", "titulo": "Almacenamiento, store y UI de creación manual" }
+      ]
+    },
+    {
+      "id": "F3",
+      "titulo": "Motor de juego",
+      "subfases": [
+        { "id": "F3.1", "titulo": "Motor: marcado y condición de victoria" },
+        { "id": "F3.2", "titulo": "Editor de patrones libres" },
+        { "id": "F3.3", "titulo": "Integración del motor con stores y configuración de victoria" }
+      ]
+    },
+    {
+      "id": "F4",
+      "titulo": "Modo presencial — marcador y ranking en vivo",
+      "subfases": [
+        { "id": "F4.1", "titulo": "Teclado numérico y registro de números sorteados" },
+        { "id": "F4.2", "titulo": "Ranking dinámico de cartones" },
+        { "id": "F4.3", "titulo": "Historial de sorteados y reinicio de sesión" }
+      ]
+    },
+    {
+      "id": "F5",
+      "titulo": "OCR con Tesseract.js",
+      "subfases": [
+        { "id": "F5.1", "titulo": "Integración de Tesseract.js y captura de imagen" },
+        { "id": "F5.2", "titulo": "Post-procesamiento: estructurar OCR en grilla 5x5" },
+        { "id": "F5.3", "titulo": "UI de confirmación editable y guardado" }
+      ]
+    },
+    {
+      "id": "F6",
+      "titulo": "PWA y observabilidad",
+      "subfases": [
+        { "id": "F6.1", "titulo": "Convertir a PWA con vite-plugin-pwa" },
+        { "id": "F6.2", "titulo": "Sentry + Vercel Analytics" }
+      ]
+    },
+    {
+      "id": "F7",
+      "titulo": "Pulido final",
+      "subfases": []
+    },
+    {
+      "id": "F8",
+      "titulo": "Documentación de usuario y release v1.0",
+      "subfases": []
+    }
+  ],
+  "roadmap_post_v1": [
+    { "version": "v1.5", "titulo": "Mejoras UX (modo oscuro, sonidos, export PDF)", "duracion_estimada": "1-2 semanas" },
+    { "version": "v2.0", "titulo": "Modo virtual con Supabase (eventos remotos, magic link, pagos manuales)", "duracion_estimada": "4-6 semanas" },
+    { "version": "v2.5", "titulo": "Pagos automáticos con Culqi", "duracion_estimada": "2-3 semanas" },
+    { "version": "v3.0", "titulo": "Yape Business + multi-moderador + app nativa RN", "duracion_estimada": "según demanda" }
+  ]
+}

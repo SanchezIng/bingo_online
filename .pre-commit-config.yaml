@@ -1,0 +1,67 @@
+# ============================================================
+# Pre-commit hooks — Bingo Digital
+# ============================================================
+#
+# IMPORTANTE: este proyecto usa DOS sistemas complementarios de hooks:
+#
+# 1. **Husky + lint-staged** (Node ecosystem) — corre ESLint, Prettier,
+#    typecheck en pre-commit, y commitlint en commit-msg.
+#    Se instala con `pnpm prepare` (después de `pnpm install`).
+#
+# 2. **pre-commit framework** (Python, este archivo) — corre gitleaks
+#    y verificadores de archivos genéricos (whitespace, archivos grandes).
+#    Es el camino más portable y mantenido para gitleaks en cualquier OS.
+#
+# Ambos se ejecutan en cada commit, sin interferirse.
+#
+# Setup (una sola vez por máquina):
+#   pip install pre-commit       # o: brew install pre-commit
+#   pre-commit install            # instala los hooks en .git/hooks/
+#
+# Si prefieres NO usar Python en absoluto y configurar gitleaks
+# directamente como hook de Husky, está bien: borra este archivo y
+# añade a .husky/pre-commit una llamada al binario de gitleaks.
+# La decisión final está en F1.1 según preferencia del autor.
+#
+# ============================================================
+
+repos:
+  # ----------------------------------------------------------
+  # Hooks genéricos: whitespace, EOF, archivos grandes, conflictos
+  # ----------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^pnpm-lock\.yaml$
+      - id: end-of-file-fixer
+        exclude: ^pnpm-lock\.yaml$
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+        exclude: ^public/.*\.(png|jpg|jpeg|webp)$  # íconos PWA pueden pesar
+      - id: check-merge-conflict
+      - id: check-json
+        exclude: ^\.kickstart-state\.json$  # tiene comentarios JSON5-like en valores
+      - id: check-yaml
+        exclude: ^pnpm-workspace\.yaml$  # pnpm acepta sintaxis específica
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ----------------------------------------------------------
+  # gitleaks — detecta secretos/credenciales hardcodeados
+  # ----------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: gitleaks (scan staged files for secrets)
+
+# ============================================================
+# NOTA: ESLint, Prettier, typecheck y commitlint NO están aquí.
+# Los corre Husky + lint-staged (mucho más rápido en monorepos Node
+# y sin depender de Python). Esa configuración vive en:
+#   - package.json (sección "lint-staged")
+#   - .husky/pre-commit
+#   - .husky/commit-msg
+# ============================================================
