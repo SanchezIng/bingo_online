@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F5.2 completada)
-**Última subfase completada:** **F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5**
-**Próxima subfase:** **F5.3 — UI de confirmación editable y guardado**
+**Última actualización:** 2026-05-15 (F5.3 completada — F5 ✅)
+**Última subfase completada:** **F5.3 — UI de confirmación editable y guardado**
+**Próxima subfase:** **F6.1 — Convertir a PWA con vite-plugin-pwa**
 
 ---
 
 ## Progreso global
 
-- Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 12 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅, F5.2 ✅)
-- Porcentaje estimado: 71%
+- Fases completadas: 3 / 8 (F1 ✅, F2 ✅, F5 ✅ — F3 y F4 también completas pero sin tag formal de fase)
+- Subfases completadas: 13 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅, F5.2 ✅, F5.3 ✅)
+- Porcentaje estimado: 76%
 
 ---
 
@@ -93,6 +93,15 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **`src/modo-presencial/pages/EditorPatrones.tsx`:** página única en `/patrones` con vista lista (mini-preview de cada patrón) y vista crear (inline). Validación: nombre obligatorio (max 30), al menos 2 casillas activas además del FREE
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
+
+### F5.3 — UI de confirmación editable y guardado (completada 2026-05-15)
+
+Cierra el flujo OCR end-to-end: foto → procesamiento → grilla editable con confianza visual → validación → guardado:
+
+- **`src/modo-presencial/components/RevisionOCR.tsx`:** grilla 5×5 con inputs editables, encabezados B-I-N-G-O, celda FREE bloqueada. Borde por confianza (alta=verde-500, media=amber-500, baja=red-500, sin candidato=dashed gray-300). Tooltip con etiqueta de confianza. Validación local: 24 casillas no-FREE con `number` en rango habilita "Guardar cartón". `validarNumerosCarton` se ejecuta dentro del componente y muestra errores inline (duplicados, etc.).
+- **`src/modo-presencial/pages/CrearCartonOCR.tsx`:** flujo refactorizado a etapas `seleccion → procesando → revision → error`. Al terminar OCR: `estructurarEnGrilla` + `consolidarCandidatos` → pasar a RevisionOCR. Warning ámbar si confianza promedio < 30%. Al confirmar guardado: `crearCartonDesdeNumeros` con `fuente='ocr'`, `agregarCarton`, navegar a `/cartones` con `state: { mensaje: 'Cartón creado por OCR.' }`. Dimensiones de imagen capturadas con `onLoad` (naturalWidth/Height), con fallback 500×500.
+- **Tests:** 13 nuevos en `RevisionOCR.test.tsx` (24 inputs + FREE, valores iniciales, edición, guardar deshabilitado/habilitado, callbacks, duplicados, colores por confianza, tooltip). 11 en `CrearCartonOCR.test.tsx` (mocks de OCR, store, useNavigate; flujo a revisión, warning < 30%, sin warning ≥ 30%, guardar→navega, volver a tomar foto, error path). **Total: 272 tests verdes** (+17 sobre F5.2).
+- **F5 completa.** Considerar tag `v0.5.0`.
 
 ### F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5 (completada 2026-05-15)
 
@@ -192,6 +201,11 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **`Modal.tsx`:** en `src/shared/components/`. Props: `titulo`, `children`, `onClose`. No usa Portal. Click fuera y ESC llaman `onClose`.
 - **`HistorialSorteados.tsx`:** props `{ numerosSorteados: number[] }`. Rangos: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75. Serie vacía muestra "—".
 - **`cargarSesion()` en Jugar.tsx:** `useEffect(() => cargarSesion(), [cargarSesion])`. Mismo patrón que `cargarCartones` en MisCartones y `cargarPatrones` en EditorPatrones.
+- **`RevisionOCR.tsx`:** props `{ grilla, numerosBase, onGuardar, onVolver }`. La validación final (incluye duplicados) se hace dentro del componente vía `validarNumerosCarton`; el padre solo recibe el `NumerosCarton` ya validado. El estado interno `valores: NumerosCartonParcial` se inicializa una vez con `useState(numerosBase)` — el componente se desmonta al volver a "seleccion", así que no necesita sincronizar `numerosBase` cambiante.
+- **`CrearCartonOCR.tsx` — `useCartonesStore()` sin selector:** se accede como `const { agregarCarton } = useCartonesStore()` para que el mock global con `vi.mocked(useCartonesStore).mockReturnValue(...)` funcione en tests. Coherente con la nota de memoria sobre Zustand y selectors.
+- **`CrearCartonOCR.tsx` — `useNavigate` mockeado en tests:** `vi.mock('react-router-dom', async (importOriginal) => { const actual = await importOriginal(); return { ...actual, useNavigate: () => navigateMock } })`. Patrón reutilizable.
+- **Dimensiones de imagen para OCR:** se capturan con `onLoad` del `<img>` en un `ref` (no state, evita re-renders). Fallback `{ w: 500, h: 500 }` si no se cargó (sólo afecta tests, en producción el usuario ve la preview antes de procesar).
+- **Mocking de funciones puras de `@/core/ocr` en tests de páginas:** `vi.mock('@/core/ocr', () => ({ procesarImagenOCR, estructurarEnGrilla, consolidarCandidatos: vi.fn() }))`. Cada test controla sus return values con `vi.mocked(fn).mockReturnValue(...)`.
 
 ---
 
@@ -215,40 +229,43 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F5.3)
+## Notas para la próxima sesión de Claude Code (F6.1)
 
-Al arrancar la sesión de **F5.3**, leer en este orden:
+Al arrancar la sesión de **F6.1**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-5.2.md`
-4. Sección F5.3 de `docs/guia_desarrollo.md`
+3. `progreso/fase-5.3.md`
+4. Sección F6.1 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F5.3:** verificar que `pnpm test:run` pasa 255 tests verdes.
+**Prerequisito de F6.1:** verificar que `pnpm test:run` pasa 272 tests verdes.
 
-**F5.3 debe:**
+**F6.1 debe:**
 
-- Crear `src/modo-presencial/components/RevisionOCR.tsx`: grilla 5×5 editable, borde por confianza (verde/amarillo/rojo/gris), tooltip con %, botón "Guardar cartón" (deshabilitado hasta 24 casillas válidas + FREE), botón "Volver a tomar foto"
-- Actualizar `CrearCartonOCR.tsx`: flujo completo captura → OCR → RevisionOCR → validación → guardado en store
-- Al guardar: llamar `validarNumerosCarton` de `core/cartones`, luego `agregarCarton` con `fuente='ocr'`, navegar a `/cartones`
-- `GrillaDetectada` y `NumerosCartonParcial` ya existen — importar desde sus módulos
+- Instalar `vite-plugin-pwa` + Workbox y configurar generación de service worker
+- `manifest.webmanifest` con nombre, iconos, theme color, display=standalone
+- Estrategia de cacheo offline para la app principal y assets estáticos
+- Verificar Lighthouse PWA 100 y que la app es instalable
+- **Ojo con `vite.config.ts`:** está en la lista de archivos sensibles. Cambios a la sección PWA pueden romper el SW. Cambios cuidadosos y commit aparte si es posible.
+- **CSP en `vercel.json`:** `cdn.jsdelivr.net` ya está en `connect-src` (para Tesseract). Si el plugin-pwa necesita algo extra, anotarlo.
 
 ---
 
 ## Bitácora rápida
 
-| Fecha      | Evento                                                                                                                              |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.        |
-| 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                           |
-| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                            |
-| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                  |
-| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                      |
-| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                          |
-| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                      |
-| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                       |
-| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                       |
-| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                                 |
-| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                      |
-| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales.      |
-| 2026-05-15 | F4.3 completada: Modal.tsx, HistorialSorteados, reiniciar con modal, cargarSesion en useEffect. 10 tests nuevos, 219 totales. F4 ✅ |
+| Fecha      | Evento                                                                                                                                             |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-15 | F5.3 completada: RevisionOCR (grilla editable, confianza visual), CrearCartonOCR refactorizado, warning < 30%. 17 tests nuevos, 272 totales. F5 ✅ |
+| 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.                       |
+| 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                                          |
+| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                                           |
+| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                                 |
+| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                                     |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                                         |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                                     |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                                      |
+| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                                      |
+| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                                                |
+| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                                     |
+| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales.                     |
+| 2026-05-15 | F4.3 completada: Modal.tsx, HistorialSorteados, reiniciar con modal, cargarSesion en useEffect. 10 tests nuevos, 219 totales. F4 ✅                |
