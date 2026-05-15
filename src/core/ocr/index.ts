@@ -1,2 +1,12 @@
 export { procesarImagenOCR } from './tesseract'
-export type { ResultadoOCRBruto, BloqueOCR, BboxOCR, OcrError, OcrErrorTipo } from './types'
+export { estructurarEnGrilla, consolidarCandidatos } from './post-process'
+export type {
+  ResultadoOCRBruto,
+  BloqueOCR,
+  BboxOCR,
+  OcrError,
+  OcrErrorTipo,
+  GrillaDetectada,
+  CeldaDetectada,
+  CandidatoOCR,
+} from './types'
