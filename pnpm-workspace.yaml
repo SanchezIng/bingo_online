@@ -1,0 +1,19 @@
+# pnpm-workspace.yaml — Bingo Digital
+# Configuración de seguridad endurecida (ver docs/adr/0002-pnpm-sobre-npm.md)
+
+# Cooldown de 24h para nuevas publicaciones en npm.
+# Protege contra ataques zero-day como Shai-Hulud (sep 2025).
+minimumReleaseAge: 1440
+
+# Bloquea sub-dependencias instaladas desde URLs no estándar (git, tarballs externos).
+blockExoticSubdeps: true
+
+# Solo los paquetes en allowBuilds pueden ejecutar scripts postinstall.
+strictDepBuilds: true
+
+# Paquetes con permiso para ejecutar scripts de build.
+# Cada adición debe justificarse en el commit que la introduce.
+# allowBuilds usa formato de mapa booleano en pnpm 11.
+allowBuilds:
+  esbuild: true
+  '@swc/core': true
