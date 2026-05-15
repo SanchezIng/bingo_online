@@ -16,7 +16,7 @@ const NUMEROS_TECLADO = Array.from({ length: 75 }, (_, i) => {
 
 export default function TecladoNumerico() {
   const { numerosSorteados, agregarNumeroSorteado, deshacerUltimoNumero } = useSesionStore()
-  const ultimo = numerosSorteados.at(-1)
+  const ultimo = numerosSorteados[numerosSorteados.length - 1]
 
   return (
     <div className="flex flex-col gap-3">
