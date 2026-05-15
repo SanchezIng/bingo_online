@@ -1,6 +1,6 @@
 import type { Carton, Result } from '@/core/cartones'
 import { validarCartonCompleto } from '@/core/cartones'
-import type { Patron } from '@/core/motor-juego'
+import type { EstadoSesion, Patron } from '@/core/motor-juego'
 
 const KEYS = {
   cartones: 'bingo:cartones',
@@ -73,18 +73,27 @@ export function guardarPatrones(patrones: Patron[]): Result<void, string> {
   return escribir(KEYS.patrones, patrones)
 }
 
-// Sesion: tipo provisional hasta F3.3 cuando se defina el store de sesión
-export function leerSesion(): unknown | null {
+export function leerSesion(): EstadoSesion | null {
   try {
     const raw = localStorage.getItem(KEYS.sesion)
     if (!raw) return null
-    return JSON.parse(raw) as unknown
+    const parsed = JSON.parse(raw) as unknown
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      Array.isArray((parsed as EstadoSesion).numerosSorteados) &&
+      typeof (parsed as EstadoSesion).iniciadaEn === 'string' &&
+      typeof (parsed as EstadoSesion).condicionActiva === 'object'
+    ) {
+      return parsed as EstadoSesion
+    }
+    return null
   } catch {
     return null
   }
 }
 
-export function guardarSesion(sesion: unknown): Result<void, string> {
+export function guardarSesion(sesion: EstadoSesion): Result<void, string> {
   return escribir(KEYS.sesion, sesion)
 }
 
