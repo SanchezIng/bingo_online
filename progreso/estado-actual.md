@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-14 (F1.2 completada)
-**Última subfase completada:** **F1.2 — Estructura de carpetas inicial, routing y deploy a Vercel**
-**Próxima subfase:** **F2.1 — Modelo, validación y generador de cartones**
+**Última actualización:** 2026-05-15 (F2.1 completada)
+**Última subfase completada:** **F2.1 — Modelo, validación y generador de cartones**
+**Próxima subfase:** **F2.2 — Almacenamiento, store y UI de creación manual**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 1 / 8 (F1 ✅)
-- Subfases completadas: 2 / 17 (F1.1 ✅, F1.2 ✅)
-- Porcentaje estimado: 12%
+- Subfases completadas: 3 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅)
+- Porcentaje estimado: 18%
 
 ---
 
@@ -34,15 +34,25 @@ El proyecto tiene código fuente por primera vez. Se creó el esqueleto con Vite
 
 Se creó la estructura de carpetas base, el router con 3 rutas y el Layout con navegación activa:
 
-- **react-router-dom 7.15.0** instalado (pnpm bloqueó 7.15.1 por cooldown de 24h — correcto)
+- **react-router-dom 7.15.0** instalado
 - **Estructura:** `src/core/`, `src/modo-presencial/`, `src/shared/`, `src/lib/`
-- **Router:** `src/lib/router.tsx` con rutas `/`, `/cartones`, `/jugar` usando `createBrowserRouter`
+- **Router:** `src/lib/router.tsx` con rutas `/`, `/cartones`, `/jugar`
 - **Layout:** `src/shared/components/Layout.tsx` con header sticky, NavLink activo
-- **Páginas:** `Home.tsx` (hero + 2 botones CTA), `MisCartones.tsx` (placeholder), `Jugar.tsx` (placeholder)
-- **Tests:** 5 tests verdes (Layout: 2, Home: 2, App: 1)
-- **Build:** 235KB JS (react-router incluido)
-- **Vercel:** conexión pendiente — el usuario la realiza vía dashboard web (ver handoff)
-- **gitleaks en pre-commit:** `pnpm dlx gitleaks protect --staged --redact` añadido al hook
+- **Páginas:** `Home.tsx`, `MisCartones.tsx` (placeholder), `Jugar.tsx` (placeholder)
+- **Tests:** 5 tests verdes
+- **Vercel:** https://bingo-online-bice.vercel.app/ — deploy automático activo
+
+### F2.1 — Modelo, validación y generador de cartones (completada 2026-05-15)
+
+Módulo `src/core/cartones/` con tipos, validación Zod y funciones puras. Sin React, sin DOM, sin localStorage:
+
+- **zod 4.4.3** instalado. **uuid 14.0.0** instalado.
+- **`types.ts`:** `SerieBingo`, `NumerosCarton` (con `'FREE'` en N[2]), `NumerosCartonParcial`, `Carton`, `Result<T,E>`
+- **`validacion.ts`:** schemas Zod por columna (rangos B/I/N/G/O), patrón Result, validación de duplicados, `validarNumerosCarton`, `validarCartonCompleto`
+- **`generador.ts`:** `crearCartonAleatorio`, `crearCartonDesdeNumeros` (con opciones de serie/fuente), `cartonVacioPlantilla`
+- **`index.ts`:** API pública re-exportando todo lo anterior
+- **Tests:** 48 tests nuevos (25 en validacion.test.ts, 23 en generador.test.ts). Total: 53 tests verdes.
+- **Cobertura:** `core/cartones/` → 81.81% statements, 96.15% branches, 88.88% funciones (supera ≥ 80%)
 
 ---
 
@@ -51,11 +61,15 @@ Se creó la estructura de carpetas base, el router con 3 rutas y el Layout con n
 - **pnpm 11.1.2** instalado globalmente. Configuración endurecida en `pnpm-workspace.yaml`.
 - **`allowBuilds` en pnpm 11** usa formato de mapa booleano (`esbuild: true`), no lista.
 - **v1 sin backend.** Todo en `localStorage`. Supabase entra en v2.
-- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand + Zod + Tesseract.js. (Zustand y Zod se instalan en F2.1.)
+- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand + Zod + Tesseract.js. (Zustand se instala en F2.2.)
 - **Node:** v24.15.0 (supera el mínimo v22 LTS, compatible).
-- **react-router-dom:** versión 7.x instalada (la guía pedía v6; la API `createBrowserRouter`/`RouterProvider`/`NavLink` es compatible). Ver handoff F1.2 para detalle.
+- **react-router-dom:** versión 7.x instalada. API compatible con lo que describe la guía.
 - **gitleaks:** vía `pnpm dlx gitleaks protect --staged --redact` en `.husky/pre-commit`.
-- **Hosting:** Vercel — pendiente de conectar por el usuario vía dashboard web.
+- **Vercel:** https://bingo-online-bice.vercel.app/ — deploy automático activo.
+- **uuid 14.0.0:** versión instalada por pnpm (pasó el cooldown de 24h). API `import { v4 as uuidv4 } from 'uuid'` compatible.
+- **Zod 4.x:** API compatible con v3 para los casos usados (z.object, z.tuple, z.literal, .safeParse). Importar con `import { z } from 'zod'`.
+- **Patrón Result:** `type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E }`. Definido en `core/cartones/types.ts`.
+- **`types.ts` con `/* v8 ignore file */`:** el archivo es puro TypeScript de tipos (sin código ejecutable). El comentario lo excluye del reporte de cobertura de v8.
 
 ---
 
@@ -63,37 +77,30 @@ Se creó la estructura de carpetas base, el router con 3 rutas y el Layout con n
 
 ### Vulnerabilidades moderadas en devDependencies
 
-- **esbuild <=0.24.2** (GHSA-67mh-4wv8-2f99): dev server expuesto a requests externos. Solo en desarrollo. Corregido en >=0.24.3 (requiere vite 6+).
-- **vite <=6.4.1** (GHSA-4w7w-66w2-5vf9): Path Traversal en .map handling. Corregido en >=6.4.2 (requiere migración a vite 6).
+- **esbuild <=0.24.2** (GHSA-67mh-4wv8-2f99): dev server expuesto a requests externos. Solo en desarrollo.
+- **vite <=6.4.1** (GHSA-4w7w-66w2-5vf9): Path Traversal en .map handling.
 
 **Impacto:** son devDependencies, solo afectan en desarrollo local. El audit con `--audit-level=high` no las detecta.
-
-### Vercel no conectado aún
-
-- El usuario conecta el repo de GitHub a Vercel vía dashboard web (vercel.com → Add New Project).
-- Configuración: Framework = Vite, Build = `pnpm build`, Output = `dist`, Install = `pnpm install --frozen-lockfile`.
-- Una vez conectado, anotar la URL en este archivo.
 
 ---
 
 ## Deudas técnicas anotadas
 
 - Migrar a Vite 6+ en el futuro para resolver las 2 vulns moderadas de esbuild y vite.
-- Anotar URL de Vercel una vez que el usuario conecte el repo.
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F2.1)
+## Notas para la próxima sesión de Claude Code (F2.2)
 
-Al arrancar la sesión de **F2.1**, leer en este orden:
+Al arrancar la sesión de **F2.2**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-1.2.md`
-4. `docs/especificaciones.md` secciones 3.1 (RF-01 a RF-08) y 7.3 (tipos)
-5. Sección F2.1 de `docs/guia_desarrollo.md`
+3. `progreso/fase-2.1.md`
+4. `docs/especificaciones.md` secciones 3.5, 7.4
+5. Sección F2.2 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F2.1:** verificar que `pnpm test:run` pasa 5 tests verdes y `pnpm build` genera dist/.
+**Prerequisito de F2.2:** verificar que `pnpm test:run` pasa 53 tests verdes y `pnpm build` genera dist/.
 
 ---
 
@@ -104,3 +111,4 @@ Al arrancar la sesión de **F2.1**, leer en este orden:
 | 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.           |
 | 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde. |
 | 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.     |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.         |
