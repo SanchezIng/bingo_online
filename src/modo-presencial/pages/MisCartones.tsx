@@ -86,7 +86,7 @@ export default function MisCartones() {
                   </button>
                 )}
               </div>
-              <CartonGrid numeros={carton.numeros} />
+              <CartonGrid numeros={carton.numeros} serie={carton.serie || undefined} />
             </div>
           ))}
         </div>

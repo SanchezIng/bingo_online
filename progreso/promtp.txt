@@ -1,0 +1,4 @@
+Lee CLAUDE.md, progreso/estado-actual.md y el último handoff en progreso/.
+Después lee la sección <Fx.x> de docs/guia_desarrollo.md.
+Confirma que entendiste y empieza.
+

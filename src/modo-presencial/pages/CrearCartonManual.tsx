@@ -8,8 +8,8 @@ export default function CrearCartonManual() {
   const navigate = useNavigate()
   const agregarCarton = useCartonesStore((s) => s.agregarCarton)
 
-  function handleGuardar(numeros: NumerosCarton) {
-    const result = crearCartonDesdeNumeros(numeros, { fuente: 'manual' })
+  function handleGuardar(numeros: NumerosCarton, serie: string) {
+    const result = crearCartonDesdeNumeros(numeros, { fuente: 'manual', serie })
     if (result.ok) {
       agregarCarton(result.value)
       navigate('/cartones', { state: { mensaje: 'Cartón creado correctamente.' } })

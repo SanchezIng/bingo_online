@@ -1,7 +1,8 @@
 # Handoff — Subfase F1.2: Estructura de carpetas inicial, routing y deploy a Vercel
 
 **Fecha de cierre:** 2026-05-14
-**Estado:** ✅ Completada (Vercel pendiente de conectar por el usuario)
+**Estado:** ✅ Completada
+**URL Vercel:** https://bingo-online-bice.vercel.app/
 **Siguiente:** F2.1 — Modelo, validación y generador de cartones
 
 ---
@@ -79,7 +80,7 @@ Se encontró que el usuario ya había añadido `pnpm dlx gitleaks protect --stag
 - [x] `pnpm test:run` pasa 5 tests verdes
 - [x] `pnpm lint && pnpm typecheck` limpios
 - [x] `pnpm build` genera dist/ (235KB JS)
-- [ ] Vercel conectado (opcional para F2.1 — es solo lógica pura TypeScript)
+- [x] Vercel conectado — https://bingo-online-bice.vercel.app/
 
 ### Lo que F2.1 debe hacer
 

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fondo azul -->
+  <rect width="32" height="32" rx="5" fill="#2563eb"/>
+  <!-- Tarjeta blanca -->
+  <rect x="2" y="2" width="28" height="28" rx="3" fill="white"/>
+  <!-- Header azul -->
+  <rect x="2" y="2" width="28" height="8" rx="3" fill="#2563eb"/>
+  <!-- Letras BINGO -->
+  <text x="5" y="8.5" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="5.5" fill="white">B</text>
+  <text x="9.5" y="8.5" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="5.5" fill="white">I</text>
+  <text x="13" y="8.5" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="5.5" fill="white">N</text>
+  <text x="18" y="8.5" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="5.5" fill="white">G</text>
+  <text x="23" y="8.5" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="5.5" fill="white">O</text>
+  <!-- Fila 1 -->
+  <rect x="3" y="11" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="8.5" y="11" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="14" y="11" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="19.5" y="11" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="25" y="11" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <!-- Fila 2 -->
+  <rect x="3" y="16" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="8.5" y="16" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <!-- FREE center amarillo -->
+  <rect x="14" y="16" width="4.5" height="4" rx="0.5" fill="#fbbf24"/>
+  <rect x="19.5" y="16" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="25" y="16" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <!-- Fila 3 -->
+  <rect x="3" y="21" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="8.5" y="21" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="14" y="21" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="19.5" y="21" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <rect x="25" y="21" width="4.5" height="4" rx="0.5" fill="#dbeafe"/>
+  <!-- Fila 4 -->
+  <rect x="3" y="26" width="4.5" height="3.5" rx="0.5" fill="#dbeafe"/>
+  <rect x="8.5" y="26" width="4.5" height="3.5" rx="0.5" fill="#dbeafe"/>
+  <rect x="14" y="26" width="4.5" height="3.5" rx="0.5" fill="#dbeafe"/>
+  <rect x="19.5" y="26" width="4.5" height="3.5" rx="0.5" fill="#dbeafe"/>
+  <rect x="25" y="26" width="4.5" height="3.5" rx="0.5" fill="#dbeafe"/>
+</svg>

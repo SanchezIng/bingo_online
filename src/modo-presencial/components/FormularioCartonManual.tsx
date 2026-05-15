@@ -3,7 +3,7 @@ import type { SerieBingo, NumerosCarton, NumerosCartonParcial } from '@/core/car
 import { cartonVacioPlantilla, crearCartonAleatorio, validarNumerosCarton } from '@/core/cartones'
 
 interface FormularioCartonManualProps {
-  onGuardar: (numeros: NumerosCarton) => void
+  onGuardar: (numeros: NumerosCarton, serie: string) => void
 }
 
 const SERIES: SerieBingo[] = ['B', 'I', 'N', 'G', 'O']
@@ -19,16 +19,17 @@ const RANGOS: Record<SerieBingo, [number, number]> = {
 export default function FormularioCartonManual({ onGuardar }: FormularioCartonManualProps) {
   const [valores, setValores] = useState<NumerosCartonParcial>(cartonVacioPlantilla)
   const [errores, setErrores] = useState<string[]>([])
+  const [serie, setSerie] = useState('')
 
-  function handleChange(serie: SerieBingo, fila: number, raw: string) {
+  function handleChange(serieBingo: SerieBingo, fila: number, raw: string) {
     const num = raw === '' ? null : parseInt(raw, 10)
     const valorFinal = raw === '' || isNaN(num as number) ? null : (num as number)
 
     setValores((prev) => {
-      const col = [...prev[serie]] as (typeof prev)[typeof serie]
+      const col = [...prev[serieBingo]] as (typeof prev)[typeof serieBingo]
       // any-justified: las tuplas tipadas necesitan asignación por índice con cast
       ;(col as (number | null | 'FREE')[])[fila] = valorFinal
-      return { ...prev, [serie]: col }
+      return { ...prev, [serieBingo]: col }
     })
     setErrores([])
   }
@@ -46,50 +47,71 @@ export default function FormularioCartonManual({ onGuardar }: FormularioCartonMa
       setErrores(result.errors)
       return
     }
-    onGuardar(result.value)
+    onGuardar(result.value, serie.trim())
     setValores(cartonVacioPlantilla())
+    setSerie('')
     setErrores([])
   }
 
-  const todasRellenas = SERIES.every((serie) =>
-    valores[serie].every((v, i) => (serie === 'N' && i === 2 ? true : v !== null)),
+  const todasRellenas = SERIES.every((s) =>
+    valores[s].every((v, i) => (s === 'N' && i === 2 ? true : v !== null)),
   )
 
   return (
     <div className="space-y-4">
+      {/* Campo de serie */}
+      <div>
+        <label htmlFor="serie-carton" className="mb-1 block text-sm font-medium text-gray-700">
+          Número de serie{' '}
+          <span className="font-normal text-gray-400">(opcional — aparece en la casilla FREE)</span>
+        </label>
+        <input
+          id="serie-carton"
+          type="text"
+          value={serie}
+          onChange={(e) => setSerie(e.target.value)}
+          placeholder="Ej: 0234, A, Serie 1…"
+          maxLength={20}
+          className="min-h-[44px] w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
+
       {/* Grilla de inputs */}
       <div className="grid grid-cols-5 gap-1.5">
-        {SERIES.map((serie) => (
-          <div key={serie} className="space-y-1.5">
+        {SERIES.map((serieBingo) => (
+          <div key={serieBingo} className="space-y-1.5">
             <div className="flex items-center justify-center rounded bg-blue-600 py-2 text-sm font-bold text-white">
-              {serie}
+              {serieBingo}
             </div>
             {Array.from({ length: 5 }, (_, fila) => {
-              if (serie === 'N' && fila === 2) {
+              if (serieBingo === 'N' && fila === 2) {
                 return (
                   <div
-                    key={`${serie}-${fila}`}
-                    className="flex min-h-[44px] items-center justify-center rounded bg-yellow-400 text-sm font-bold text-yellow-900"
+                    key={`${serieBingo}-${fila}`}
+                    className="flex min-h-[44px] flex-col items-center justify-center rounded bg-yellow-400 text-sm font-bold text-yellow-900"
                   >
-                    FREE
+                    <span>FREE</span>
+                    {serie.trim() && (
+                      <span className="text-xs font-normal opacity-70">{serie.trim()}</span>
+                    )}
                   </div>
                 )
               }
 
-              const [min, max] = RANGOS[serie]
-              const val = valores[serie][fila]
+              const [min, max] = RANGOS[serieBingo]
+              const val = valores[serieBingo][fila]
 
               return (
                 <input
-                  key={`${serie}-${fila}`}
+                  key={`${serieBingo}-${fila}`}
                   type="number"
                   inputMode="numeric"
                   min={min}
                   max={max}
                   value={val === null || val === undefined ? '' : String(val)}
-                  onChange={(e) => handleChange(serie, fila, e.target.value)}
+                  onChange={(e) => handleChange(serieBingo, fila, e.target.value)}
                   placeholder={`${min}–${max}`}
-                  aria-label={`${serie} fila ${fila + 1}`}
+                  aria-label={`${serieBingo} fila ${fila + 1}`}
                   className="min-h-[44px] w-full rounded border border-gray-300 px-1 py-1 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               )
