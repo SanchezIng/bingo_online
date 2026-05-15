@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F4.2 completada)
-**Última subfase completada:** **F4.2 — Ranking dinámico de cartones**
-**Próxima subfase:** **F4.3 — Historial de números sorteados y reinicio de sesión**
+**Última actualización:** 2026-05-15 (F4.3 completada)
+**Última subfase completada:** **F4.3 — Historial de números sorteados y reinicio de sesión**
+**Próxima subfase:** **F5.1 — Integración de Tesseract.js**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 9 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅)
-- Porcentaje estimado: 53%
+- Subfases completadas: 10 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅)
+- Porcentaje estimado: 59%
 
 ---
 
@@ -94,6 +94,16 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
 
+### F4.3 — Historial de números sorteados y reinicio de sesión (completada 2026-05-15)
+
+Modal reutilizable, historial agrupado por serie B/I/N/G/O, reiniciar con confirmación explícita y persistencia de sesión a recargas:
+
+- **`src/shared/components/Modal.tsx`:** overlay accesible (`role="dialog"`, ESC + click fuera cierra), reutilizable
+- **`src/modo-presencial/components/HistorialSorteados.tsx`:** lista números sorteados agrupados por serie (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75), orden de aparición preservado
+- **`Jugar.tsx`:** botón "Ver historial" → modal con `HistorialSorteados`; "Reiniciar" → modal con texto descriptivo y botones Cancelar/Confirmar; `useEffect(() => cargarSesion(), [cargarSesion])` para persistencia a recargas
+- **Tests:** 10 nuevos (7 HistorialSorteados + 3 Jugar). Total: **219 tests verdes**.
+- **F4 completa.** El juego presencial end-to-end sin OCR está listo. Tag `v0.4.0` recomendado.
+
 ### F4.2 — Ranking dinámico de cartones (completada 2026-05-15)
 
 Lista de cartones en `/jugar` reordenada en tiempo real por proximidad al patrón:
@@ -154,6 +164,9 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **Tests de Jugar con cartones:** deben mockear `rankingComputed` con entradas válidas. Sin ranking mock, `Jugar.tsx` no renderiza cartones aunque `mockCartones` tenga datos.
 - **`serieDe(n)`:** función local en TecladoNumerico: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75.
 - **`role="region"`:** el div del historial en Jugar.tsx lleva `role="region"` + `aria-label` para que sea consultable por `getByRole('region')` en tests.
+- **`Modal.tsx`:** en `src/shared/components/`. Props: `titulo`, `children`, `onClose`. No usa Portal. Click fuera y ESC llaman `onClose`.
+- **`HistorialSorteados.tsx`:** props `{ numerosSorteados: number[] }`. Rangos: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75. Serie vacía muestra "—".
+- **`cargarSesion()` en Jugar.tsx:** `useEffect(() => cargarSesion(), [cargarSesion])`. Mismo patrón que `cargarCartones` en MisCartones y `cargarPatrones` en EditorPatrones.
 
 ---
 
@@ -177,36 +190,39 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F4.3)
+## Notas para la próxima sesión de Claude Code (F5.1)
 
-Al arrancar la sesión de **F4.3**, leer en este orden:
+Al arrancar la sesión de **F5.1**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-4.2.md`
-4. Sección F4.3 de `docs/guia_desarrollo.md`
+3. `progreso/fase-4.3.md`
+4. Sección F5.1 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F4.3:** verificar que `pnpm test:run` pasa 209 tests verdes.
+**Prerequisito de F5.1:** verificar que `pnpm test:run` pasa 219 tests verdes.
 
-**F4.3 debe:**
+**F5.1 debe:**
 
-- Crear `HistorialSorteados.tsx`: números agrupados por serie B/I/N/G/O en un modal
-- Mejorar persistencia: `cargarSesion()` al montar la app (actualmente no se llama en ningún `useEffect`)
-- Tests de historial, reinicio y recarga
+- Instalar `tesseract.js` (revisar compatibilidad con Vite 5 y workers antes de instalar)
+- Crear `src/core/ocr/` (la carpeta NO debe existir antes de F5.1 — verificar)
+- Crear tipos OCR y función `procesarImagen(file: File): Promise<Result<NumerosCartonParcial, OcrError>>`
+- UI mínima para subir/capturar imagen
+- Las fotos JAMÁS salen del dispositivo — OCR 100% en cliente con Tesseract.js
 
 ---
 
 ## Bitácora rápida
 
-| Fecha      | Evento                                                                                                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                       |
-| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                             |
-| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                 |
-| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                     |
-| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                 |
-| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                  |
-| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                  |
-| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                            |
-| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                 |
-| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales. |
+| Fecha      | Evento                                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                            |
+| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                  |
+| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                      |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                          |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                      |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                       |
+| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                       |
+| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                                 |
+| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                      |
+| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales.      |
+| 2026-05-15 | F4.3 completada: Modal.tsx, HistorialSorteados, reiniciar con modal, cargarSesion en useEffect. 10 tests nuevos, 219 totales. F4 ✅ |
