@@ -22,12 +22,20 @@ export default function MisCartones() {
     <div className="px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Mis cartones</h1>
-        <Link
-          to="/cartones/nuevo"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          + Crear cartón
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/cartones/foto"
+            className="rounded-lg border border-blue-600 px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50"
+          >
+            Crear con foto (OCR)
+          </Link>
+          <Link
+            to="/cartones/nuevo"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + Crear cartón
+          </Link>
+        </div>
       </div>
 
       {/* Mensaje de éxito tras crear */}
