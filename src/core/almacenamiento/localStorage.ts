@@ -1,5 +1,6 @@
 import type { Carton, Result } from '@/core/cartones'
 import { validarCartonCompleto } from '@/core/cartones'
+import type { Patron } from '@/core/motor-juego'
 
 const KEYS = {
   cartones: 'bingo:cartones',
@@ -48,19 +49,27 @@ export function guardarCartones(cartones: Carton[]): Result<void, string> {
   return escribir(KEYS.cartones, cartones)
 }
 
-// Patrones: tipo provisional hasta F3.1 cuando se defina Patron
-export function leerPatrones(): unknown[] {
+export function leerPatrones(): Patron[] {
   try {
     const raw = localStorage.getItem(KEYS.patrones)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter(
+      (p): p is Patron =>
+        typeof p === 'object' &&
+        p !== null &&
+        typeof (p as Patron).id === 'string' &&
+        typeof (p as Patron).nombre === 'string' &&
+        Array.isArray((p as Patron).grilla),
+    )
   } catch {
+    console.warn('[almacenamiento] error al leer patrones, retornando lista vacía')
     return []
   }
 }
 
-export function guardarPatrones(patrones: unknown[]): Result<void, string> {
+export function guardarPatrones(patrones: Patron[]): Result<void, string> {
   return escribir(KEYS.patrones, patrones)
 }
 
@@ -102,7 +111,7 @@ export function importarTodo(json: string): Result<void, string> {
       if (!result.ok) return result
     }
     if (Array.isArray(datos.patrones)) {
-      const result = guardarPatrones(datos.patrones)
+      const result = guardarPatrones(datos.patrones as Patron[])
       if (!result.ok) return result
     }
     return { ok: true, value: undefined }

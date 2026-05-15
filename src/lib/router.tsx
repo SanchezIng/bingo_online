@@ -4,6 +4,7 @@ import Home from '@/modo-presencial/pages/Home'
 import MisCartones from '@/modo-presencial/pages/MisCartones'
 import CrearCartonManual from '@/modo-presencial/pages/CrearCartonManual'
 import Jugar from '@/modo-presencial/pages/Jugar'
+import EditorPatrones from '@/modo-presencial/pages/EditorPatrones'
 
 export const router = createBrowserRouter([
   {
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: 'cartones', element: <MisCartones /> },
       { path: 'cartones/nuevo', element: <CrearCartonManual /> },
+      { path: 'patrones', element: <EditorPatrones /> },
       { path: 'jugar', element: <Jugar /> },
     ],
   },

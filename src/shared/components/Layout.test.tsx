@@ -12,10 +12,11 @@ function renderLayout() {
 }
 
 describe('Layout', () => {
-  it('renderiza los tres links de navegación', () => {
+  it('renderiza los cuatro links de navegación', () => {
     renderLayout()
     expect(screen.getByRole('link', { name: 'Inicio' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Mis Cartones' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Patrones' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Jugar' })).toBeInTheDocument()
   })
 
