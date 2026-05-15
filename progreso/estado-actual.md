@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F3.2 completada)
-**Última subfase completada:** **F3.2 — Editor de patrones libres**
-**Próxima subfase:** **F3.3 — Integración del motor con stores y configuración de victoria**
+**Última actualización:** 2026-05-15 (F3.3 completada)
+**Última subfase completada:** **F3.3 — Integración del motor con stores y configuración de victoria**
+**Próxima subfase:** **F4.1 — Teclado numérico y registro de números sorteados**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 6 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅)
-- Porcentaje estimado: 35%
+- Subfases completadas: 7 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅)
+- Porcentaje estimado: 41%
 
 ---
 
@@ -94,6 +94,17 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
 
+### F3.3 — Integración del motor con stores y configuración de victoria (completada 2026-05-15)
+
+Store de sesión de juego que une cartones + patrones + condición + números sorteados:
+
+- **`src/lib/stores/sesion.ts`:** Zustand store con `condicionVictoria`, `numerosSorteados`, `iniciadaEn`. Actions: `establecerCondicion`, `agregarNumeroSorteado` (ignora duplicados y sin sesión), `deshacerUltimoNumero`, `reiniciarSesion`, `cargarSesion`. Getter: `rankingComputed()` usando `getState()` de otros stores.
+- **`src/core/almacenamiento/localStorage.ts`:** `leerSesion`/`guardarSesion` tipadas con `EstadoSesion` (antes `unknown`). Validación estructural al leer.
+- **`src/modo-presencial/pages/ConfiguracionJuego.tsx`:** radio buttons para 3 condiciones, input numérico para `n_marcados`, dropdown de patrones para `patron`, botón "Iniciar sesión" que llama `establecerCondicion` + `reiniciarSesion` y navega a `/jugar`.
+- **`src/modo-presencial/pages/Jugar.tsx`:** muestra resumen de sesión activa (condición, cartones, números) o CTA a `/configurar` si no hay sesión.
+- **Router:** ruta `/configurar` → `ConfiguracionJuego` añadida.
+- **Tests:** 30 tests nuevos (21 store + 9 ConfiguracionJuego). Total: **169 tests verdes**.
+
 ---
 
 ## Decisiones técnicas vivas (las que afectan trabajo futuro)
@@ -110,9 +121,9 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **Zod 4.x:** `z.string().uuid()` valida RFC 9562: requiere versión `[1-8]` y variante `[89ab]`. Usar UUIDs generados por `uuidv4()` en fixtures de tests (no hardcoded con todos ceros).
 - **Patrón Result:** `type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E }`. Definido en `core/cartones/types.ts`.
 - **Zustand 5.x:** API de `create()` igual a v4 para uso básico. Importar con `import { create } from 'zustand'`.
-- **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/cartones')` y `vi.mocked(useCartonesStore).mockReturnValue(...)` funciona para llamadas sin selector. Mismo patrón aplica para `usePatronesStore`.
+- **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/X')` + `vi.mocked(useXStore).mockReturnValue(...)`. Funciona cuando el componente llama `useXStore()` sin selector. **IMPORTANTE:** si el componente usa selector `useXStore((s) => s.campo)`, el mock devuelve el objeto completo (no el campo) — usar desestructuración sin selector en componentes.
 - **`leerPatrones` y `guardarPatrones`:** tipadas con `Patron[]` desde F3.2. Importan `Patron` desde `@/core/motor-juego`.
-- **`leerSesion` y `guardarSesion`:** usan `unknown` como tipo provisional. Se tipará con el store de sesión en F3.3.
+- **`leerSesion` y `guardarSesion`:** tipadas con `EstadoSesion` desde F3.3. Incluyen validación estructural.
 - **Coordenadas motor-juego:** `"fila,columna"` 0-indexed. B→col0, I→col1, N→col2, G→col3, O→col4. FREE en `"2,2"`.
 - **`evaluarCondicion` — patrón no encontrado:** retorna `{ ganado: false, faltan: Infinity }`.
 - **`calcularRanking` — sort estable:** en empate de `faltan`, preserva orden del array original.
@@ -120,6 +131,8 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **react-refresh/only-export-components:** no exportar funciones utilitarias desde archivos de componentes. Usar módulos separados (ej: `patronUtils.ts`).
 - **PatronCanvas — grilla controlada:** el componente recibe `grilla: boolean[][]` + `onChange`. El estado se gestiona en el padre (EditorPatrones).
 - **EditorPatrones — validación de grilla:** mínimo 3 casillas activas (1 FREE + 2 libres) para guardar un patrón.
+- **`EstadoSesion` vs store de sesión:** el tipo `EstadoSesion` usa `condicionActiva`; el store usa `condicionVictoria`. El mapping se hace explícito en `persistirSesion` y `cargarSesion`.
+- **`rankingComputed`:** función getter en el store de sesión que llama `useCartonesStore.getState()` y `usePatronesStore.getState()`. Calcula on-demand. No es reactivo por suscripción — el ranking reactivo en tiempo real se implementará en F4.
 
 ---
 
@@ -138,28 +151,29 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 
 - Migrar a Vite 6+ en el futuro para resolver las 2 vulns moderadas de esbuild y vite.
 - `schema.ts`: cobertura baja (33%) en `migrarSiHaceFalta` — sin tests porque requeriría localStorage con datos de versión previa. Aceptable para v1.
-- `lib/stores/cartones.ts`: cobertura baja en actions (25%) porque los tests de componentes mockean el store. Considerar tests de integración del store en F3.3.
+- `lib/stores/cartones.ts`: cobertura baja en actions (25%) porque los tests de componentes mockean el store. Considerar tests de integración del store en F4.
+- `rankingComputed` no es reactivo: si cambian cartones o patrones sin re-renderizar el componente que usa el store de sesión, el ranking puede estar desactualizado. En F4, cuando el marcador sea interactivo, evaluar si se necesita un hook `useRanking()` con suscripción a los 3 stores.
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F3.3)
+## Notas para la próxima sesión de Claude Code (F4.1)
 
-Al arrancar la sesión de **F3.3**, leer en este orden:
+Al arrancar la sesión de **F4.1**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-3.2.md`
-4. Sección F3.3 de `docs/guia_desarrollo.md`
+3. `progreso/fase-3.3.md`
+4. Sección F4.1 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F3.3:** verificar que `pnpm test:run` pasa 139 tests verdes y `pnpm build` genera dist/.
+**Prerequisito de F4.1:** verificar que `pnpm test:run` pasa 169 tests verdes y `pnpm build` genera dist/.
 
-**F3.3 debe:**
+**F4.1 debe:**
 
-- Crear `src/lib/stores/sesion.ts` — store de sesión con `condicionVictoria`, `numerosSorteados`, actions y selector `rankingComputed`
-- Crear `src/modo-presencial/pages/ConfiguracionJuego.tsx` — radio buttons para los 3 tipos de condición, botón "Iniciar sesión"
-- Actualizar `Jugar.tsx` para mostrar la condición activa y el estado de la sesión
-- Tipar `leerSesion`/`guardarSesion` con el tipo de sesión
-- Tests de integración del store de sesión
+- En `/jugar`, añadir teclado numérico grande (botones 1–75) para `agregarNumeroSorteado`
+- Botón "Deshacer" → `deshacerUltimoNumero()`
+- Historial visible de los últimos números sorteados
+- Números ya sorteados visualmente deshabilitados en el teclado
+- Tests de interacción del teclado
 
 ---
 
@@ -174,3 +188,4 @@ Al arrancar la sesión de **F3.3**, leer en este orden:
 | 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                |
 | 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                 |
 | 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales. |
+| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.           |
