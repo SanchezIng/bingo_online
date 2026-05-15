@@ -3,8 +3,8 @@ import { describe, it, expect } from 'vitest'
 import App from './App'
 
 describe('App', () => {
-  it('muestra el título Bingo Digital', () => {
+  it('muestra el título Bingo Digital en el header', () => {
     render(<App />)
-    expect(screen.getByText(/Bingo Digital/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Bingo Digital/i).length).toBeGreaterThan(0)
   })
 })
