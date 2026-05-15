@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F2.1 completada)
-**Última subfase completada:** **F2.1 — Modelo, validación y generador de cartones**
-**Próxima subfase:** **F2.2 — Almacenamiento, store y UI de creación manual**
+**Última actualización:** 2026-05-15 (F2.2 completada)
+**Última subfase completada:** **F2.2 — Almacenamiento, store y UI de creación manual**
+**Próxima subfase:** **F3.1 — Motor de juego — marcado y condición de victoria**
 
 ---
 
 ## Progreso global
 
-- Fases completadas: 1 / 8 (F1 ✅)
-- Subfases completadas: 3 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅)
-- Porcentaje estimado: 18%
+- Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
+- Subfases completadas: 4 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅)
+- Porcentaje estimado: 24%
 
 ---
 
@@ -51,8 +51,23 @@ Módulo `src/core/cartones/` con tipos, validación Zod y funciones puras. Sin R
 - **`validacion.ts`:** schemas Zod por columna (rangos B/I/N/G/O), patrón Result, validación de duplicados, `validarNumerosCarton`, `validarCartonCompleto`
 - **`generador.ts`:** `crearCartonAleatorio`, `crearCartonDesdeNumeros` (con opciones de serie/fuente), `cartonVacioPlantilla`
 - **`index.ts`:** API pública re-exportando todo lo anterior
-- **Tests:** 48 tests nuevos (25 en validacion.test.ts, 23 en generador.test.ts). Total: 53 tests verdes.
-- **Cobertura:** `core/cartones/` → 81.81% statements, 96.15% branches, 88.88% funciones (supera ≥ 80%)
+- **Tests:** 48 tests nuevos. Total: 53 tests verdes.
+- **Cobertura:** `core/cartones/` → 81.81% statements, 96.15% branches, 88.88% funciones
+
+### F2.2 — Almacenamiento, store y UI de creación manual (completada 2026-05-15)
+
+Capa de persistencia, Zustand store y UI end-to-end para crear/listar/borrar cartones:
+
+- **zustand 5.0.13** instalado.
+- **`src/core/almacenamiento/`:** `schema.ts` (SCHEMA_VERSION, migrarSiHaceFalta), `localStorage.ts` (leer/guardar cartones+patrones+sesión, exportar/importar, Result), `index.ts` (API pública)
+- **`src/lib/stores/cartones.ts`:** Zustand store con state `cartones[]` + `error`, actions `cargarCartones`, `agregarCarton`, `eliminarCarton`, `editarCarton`
+- **`CartonGrid.tsx`:** grilla 5×5 con encabezados B-I-N-G-O, prop `casillasMarcadas` (para F4)
+- **`FormularioCartonManual.tsx`:** 5 columnas × 5 inputs, FREE deshabilitado, validación inline, "Llenar aleatoriamente", "Guardar cartón", mobile-first (min-h 44px)
+- **`CrearCartonManual.tsx`:** página que llama al formulario y redirige a `/cartones` con mensaje de éxito
+- **`MisCartones.tsx`:** listado real del store, tarjetas con mini-grilla, borrado con confirmación en 2 pasos
+- **Router:** nueva ruta `/cartones/nuevo`
+- **Tests:** 26 tests nuevos (13 almacenamiento + 6 formulario + 7 MisCartones). Total: 79 tests verdes.
+- **Cobertura:** `core/almacenamiento/` → 85.84% statements, 79.31% branches, 80% funciones (supera ≥ 70%)
 
 ---
 
@@ -61,15 +76,18 @@ Módulo `src/core/cartones/` con tipos, validación Zod y funciones puras. Sin R
 - **pnpm 11.1.2** instalado globalmente. Configuración endurecida en `pnpm-workspace.yaml`.
 - **`allowBuilds` en pnpm 11** usa formato de mapa booleano (`esbuild: true`), no lista.
 - **v1 sin backend.** Todo en `localStorage`. Supabase entra en v2.
-- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand + Zod + Tesseract.js. (Zustand se instala en F2.2.)
+- **Stack frontend:** React 18 + Vite 5 + TypeScript strict + Tailwind 3 + Zustand 5 + Zod 4 + uuid 14. Tesseract.js entra en F5.
 - **Node:** v24.15.0 (supera el mínimo v22 LTS, compatible).
 - **react-router-dom:** versión 7.x instalada. API compatible con lo que describe la guía.
 - **gitleaks:** vía `pnpm dlx gitleaks protect --staged --redact` en `.husky/pre-commit`.
 - **Vercel:** https://bingo-online-bice.vercel.app/ — deploy automático activo.
-- **uuid 14.0.0:** versión instalada por pnpm (pasó el cooldown de 24h). API `import { v4 as uuidv4 } from 'uuid'` compatible.
-- **Zod 4.x:** API compatible con v3 para los casos usados (z.object, z.tuple, z.literal, .safeParse). Importar con `import { z } from 'zod'`.
+- **uuid 14.0.0:** `import { v4 as uuidv4 } from 'uuid'` compatible.
+- **Zod 4.x:** `z.string().uuid()` valida RFC 9562: requiere versión `[1-8]` y variante `[89ab]`. Usar UUIDs generados por `uuidv4()` en fixtures de tests (no hardcoded con todos ceros).
 - **Patrón Result:** `type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E }`. Definido en `core/cartones/types.ts`.
-- **`types.ts` con `/* v8 ignore file */`:** el archivo es puro TypeScript de tipos (sin código ejecutable). El comentario lo excluye del reporte de cobertura de v8.
+- **Zustand 5.x:** API de `create()` igual a v4 para uso básico. Importar con `import { create } from 'zustand'`.
+- **Mocking de Zustand en tests:** `vi.mock('@/lib/stores/cartones')` y `vi.mocked(useCartonesStore).mockReturnValue(...)` funciona para llamadas sin selector.
+- **`leerPatrones` y `guardarPatrones`:** usan `unknown[]` como tipo provisional. Se tipará con `Patron` en F3.2.
+- **`leerSesion` y `guardarSesion`:** usan `unknown` como tipo provisional. Se tipará con el store de sesión en F3.3.
 
 ---
 
@@ -87,20 +105,22 @@ Módulo `src/core/cartones/` con tipos, validación Zod y funciones puras. Sin R
 ## Deudas técnicas anotadas
 
 - Migrar a Vite 6+ en el futuro para resolver las 2 vulns moderadas de esbuild y vite.
+- `schema.ts`: cobertura baja (33%) en `migrarSiHaceFalta` — sin tests porque requeriría localStorage con datos de versión previa. Aceptable para v1.
+- `lib/stores/cartones.ts`: cobertura baja en actions (25%) porque los tests de componentes mockean el store. Considerar tests de integración del store en F3.3.
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F2.2)
+## Notas para la próxima sesión de Claude Code (F3.1)
 
-Al arrancar la sesión de **F2.2**, leer en este orden:
+Al arrancar la sesión de **F3.1**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-2.1.md`
-4. `docs/especificaciones.md` secciones 3.5, 7.4
-5. Sección F2.2 de `docs/guia_desarrollo.md`
+3. `progreso/fase-2.2.md`
+4. `docs/especificaciones.md` secciones 3.2 (RF-09 a RF-15), 7.3 (tipos Patron)
+5. Sección F3.1 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F2.2:** verificar que `pnpm test:run` pasa 53 tests verdes y `pnpm build` genera dist/.
+**Prerequisito de F3.1:** verificar que `pnpm test:run` pasa 79 tests verdes y `pnpm build` genera dist/.
 
 ---
 
@@ -112,3 +132,4 @@ Al arrancar la sesión de **F2.2**, leer en este orden:
 | 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde. |
 | 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.     |
 | 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.         |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.     |
