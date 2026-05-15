@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F5.1 completada)
-**Última subfase completada:** **F5.1 — Integración de Tesseract.js y captura de imagen**
-**Próxima subfase:** **F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5**
+**Última actualización:** 2026-05-15 (F5.2 completada)
+**Última subfase completada:** **F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5**
+**Próxima subfase:** **F5.3 — UI de confirmación editable y guardado**
 
 ---
 
 ## Progreso global
 
 - Fases completadas: 2 / 8 (F1 ✅, F2 ✅)
-- Subfases completadas: 11 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅)
-- Porcentaje estimado: 65%
+- Subfases completadas: 12 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅, F5.2 ✅)
+- Porcentaje estimado: 71%
 
 ---
 
@@ -93,6 +93,16 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **`src/modo-presencial/pages/EditorPatrones.tsx`:** página única en `/patrones` con vista lista (mini-preview de cada patrón) y vista crear (inline). Validación: nombre obligatorio (max 30), al menos 2 casillas activas además del FREE
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
+
+### F5.2 — Post-procesamiento: estructurar OCR en grilla 5×5 (completada 2026-05-15)
+
+Módulo `src/core/ocr/post-process.ts` con lógica pura de post-proceso. Sin UI, sin Tesseract real:
+
+- **Nuevos tipos en `src/core/ocr/types.ts`:** `CandidatoOCR` (numero + confianza 'alta'|'media'|'baja'), `CeldaDetectada` (fila, columna, candidatos[]), `GrillaDetectada` (celdas[])
+- **`estructurarEnGrilla(resultado, dimensionesImagen)`:** Divide imagen en grilla 5×5, asigna cada bloque a su celda por coordenadas del centro. Mapea confianza Tesseract (0-100) a alta/media/baja (≥80/50-79/<50). Valida rangos por columna (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75); fuera de rango → confianza forzada a 'baja'. Celda (2,2) FREE siempre excluida. Devuelve 24 celdas (5×5 menos FREE).
+- **`consolidarCandidatos(grilla)`:** Selecciona el candidato de mayor confianza por celda. Sin candidatos → null. Columna N fila 2 siempre 'FREE'. Retorna `NumerosCartonParcial`.
+- **`src/core/ocr/index.ts`:** exporta `estructurarEnGrilla`, `consolidarCandidatos` y los 3 nuevos tipos.
+- **Tests:** 21 tests nuevos con fixtures (sin Tesseract real). Total: **255 tests verdes**.
 
 ### F5.1 — Integración de Tesseract.js y captura de imagen (completada 2026-05-15)
 
@@ -205,26 +215,23 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F5.2)
+## Notas para la próxima sesión de Claude Code (F5.3)
 
-Al arrancar la sesión de **F5.2**, leer en este orden:
+Al arrancar la sesión de **F5.3**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-5.1.md`
-4. Sección F5.2 de `docs/guia_desarrollo.md`
+3. `progreso/fase-5.2.md`
+4. Sección F5.3 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F5.2:** verificar que `pnpm test:run` pasa 234 tests verdes.
+**Prerequisito de F5.3:** verificar que `pnpm test:run` pasa 255 tests verdes.
 
-**F5.2 debe:**
+**F5.3 debe:**
 
-- Añadir `GrillaDetectada` a `src/core/ocr/types.ts`
-- Crear `src/core/ocr/post-process.ts` con `estructurarEnGrilla` y `consolidarCandidatos`
-- Heurística: dividir imagen en grilla 5×5 por coordenadas del centro de cada bloque
-- Validar rango por columna (B=1-15, I=16-30, N=31-45, G=46-60, O=61-75)
-- Celda (2,2) es FREE — nunca asignar candidatos
-- Tests con fixtures (sin llamada real a Tesseract)
-- `NumerosCartonParcial` ya existe en `src/core/cartones/types.ts` — reusar
+- Crear `src/modo-presencial/components/RevisionOCR.tsx`: grilla 5×5 editable, borde por confianza (verde/amarillo/rojo/gris), tooltip con %, botón "Guardar cartón" (deshabilitado hasta 24 casillas válidas + FREE), botón "Volver a tomar foto"
+- Actualizar `CrearCartonOCR.tsx`: flujo completo captura → OCR → RevisionOCR → validación → guardado en store
+- Al guardar: llamar `validarNumerosCarton` de `core/cartones`, luego `agregarCarton` con `fuente='ocr'`, navegar a `/cartones`
+- `GrillaDetectada` y `NumerosCartonParcial` ya existen — importar desde sus módulos
 
 ---
 
@@ -232,6 +239,7 @@ Al arrancar la sesión de **F5.2**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.        |
 | 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                           |
 | 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                            |
 | 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                  |
