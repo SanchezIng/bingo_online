@@ -1,16 +1,16 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F5.3 completada — F5 ✅)
-**Última subfase completada:** **F5.3 — UI de confirmación editable y guardado**
-**Próxima subfase:** **F6.1 — Convertir a PWA con vite-plugin-pwa**
+**Última actualización:** 2026-05-15 (F5.4 completada — rediseño de OCR)
+**Última subfase completada:** **F5.4 — Preprocessing + OCR por celda**
+**Próxima subfase:** **F5.5 — Calibración manual de 4 esquinas + perspective warp** (luego F5.6: top-N candidatos + debug visual). F6.1 queda para después de F5 v2.
 
 ---
 
 ## Progreso global
 
-- Fases completadas: 3 / 8 (F1 ✅, F2 ✅, F5 ✅ — F3 y F4 también completas pero sin tag formal de fase)
-- Subfases completadas: 13 / 17 (F1.1 ✅, F1.2 ✅, F2.1 ✅, F2.2 ✅, F3.1 ✅, F3.2 ✅, F3.3 ✅, F4.1 ✅, F4.2 ✅, F4.3 ✅, F5.1 ✅, F5.2 ✅, F5.3 ✅)
-- Porcentaje estimado: 76%
+- Fases completadas: 3 / 8 (F1 ✅, F2 ✅; F3 y F4 también completas pero sin tag formal). **F5 v1 reemplazada por F5 v2 in-progress**.
+- Subfases completadas: 14 / 17 originales + F5.4 = 14 / 19 efectivas (F5.5 y F5.6 nuevas pendientes).
+- Porcentaje estimado: 74% (bajó porque añadimos 2 subfases al plan)
 
 ---
 
@@ -93,6 +93,18 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **`src/modo-presencial/pages/EditorPatrones.tsx`:** página única en `/patrones` con vista lista (mini-preview de cada patrón) y vista crear (inline). Validación: nombre obligatorio (max 30), al menos 2 casillas activas además del FREE
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
+
+### F5.4 — Preprocessing + OCR por celda (completada 2026-05-15)
+
+Rediseño profundo del flujo OCR. La heurística F5.1/F5.2 (OCR global + asignación por bbox a una grilla 5×5) era frágil con fotos reales. F5.4 cambia a OCR por celda con preprocesamiento de imagen:
+
+- **`src/core/ocr/preprocess.ts`:** helpers Canvas y funciones puras sobre `Uint8ClampedArray`. Pipeline: grayscale (luminancia perceptual 0.299/0.587/0.114) → contraste (factor 1.4) → binarización Otsu. `cropCelda` recorta una celda de la grilla 5×5 a un canvas separado. La lógica pura (sin Canvas) está testeada; las wrappers de Canvas están marcadas con `/* v8 ignore */` porque jsdom no implementa Canvas 2D.
+- **`src/core/ocr/tesseract.ts`:** refactor completo. `procesarImagenOCR` ahora retorna `Result<GrillaDetectada, OcrError>` directamente. Pipeline: file → canvas → preprocess → loop 5×5 (24 celdas, FREE excluida) → `recognize()` por celda con `tessedit_pageseg_mode=8` (single word) + whitelist `0123456789`. Worker reutilizable: se crea una vez y se termina al final. Validación de rango por columna (B=1-15, I=16-30, …) baja confianza a 'baja' si el número cae fuera. Logger emite progreso por etapas: preprocess 0-5, init 5-15 (con sub-progreso de "loading core" y "loading traineddata"), ocr-celda 15-95 incrementando por celda procesada, fin 100.
+- **`src/core/ocr/post-process.ts`:** simplificado. Solo queda `consolidarCandidatos`; `estructurarEnGrilla` eliminada (ya no se necesita porque el OCR retorna grilla directa).
+- **`src/core/ocr/types.ts`:** eliminados `BboxOCR`, `BloqueOCR`, `ResultadoOCRBruto`. Se mantienen `OcrError`, `CandidatoOCR`, `CeldaDetectada`, `GrillaDetectada`.
+- **`CrearCartonOCR.tsx`:** no llama más a `estructurarEnGrilla`. El warning de confianza baja ahora se calcula con promedio ponderado de candidatos por nivel (alta=1, media=0.6, baja=0.2). Dimensiones de imagen ya no se trackean (no se necesitan; el preprocess opera sobre el canvas creado internamente).
+- **Tests:** 17 nuevos en `preprocess.test.ts` (lógica pura: grayscale, contraste, histograma, Otsu, umbral, sharpen). 13 nuevos en `tesseract.test.ts` (mocks de createWorker + preprocess; verifica workerPath/corePath locales, PSM=8, whitelist, 24 recognize calls, mapeo de confianza, validación de rango, progreso monotónico). 8 simplificados en `post-process.test.ts` (solo `consolidarCandidatos`). 10 ajustados en `CrearCartonOCR.test.tsx`. **Total: 281 tests verdes** (+9 netos sobre F5.3).
+- **Decisión arquitectónica:** OCR por celda toma ~50-200 ms por celda × 24 = 1.2-4.8s total. Más lento que OCR global (~1s) pero mucho más preciso porque cada cell tiene PSM=8 (single word) y solo dígitos.
 
 ### F5.3 — UI de confirmación editable y guardado (completada 2026-05-15)
 
@@ -229,43 +241,52 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F6.1)
+## Notas para la próxima sesión de Claude Code (F5.5)
 
-Al arrancar la sesión de **F6.1**, leer en este orden:
+Al arrancar la sesión de **F5.5**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-5.3.md`
-4. Sección F6.1 de `docs/guia_desarrollo.md`
+3. `progreso/fase-5.4.md`
+4. La nota interna sobre F5 v2 en este mismo archivo (sección F5.4)
 
-**Prerequisito de F6.1:** verificar que `pnpm test:run` pasa 272 tests verdes.
+**Prerequisito de F5.5:** verificar que `pnpm test:run` pasa 281 tests verdes.
 
-**F6.1 debe:**
+**F5.5 debe:**
 
-- Instalar `vite-plugin-pwa` + Workbox y configurar generación de service worker
-- `manifest.webmanifest` con nombre, iconos, theme color, display=standalone
-- Estrategia de cacheo offline para la app principal y assets estáticos
-- Verificar Lighthouse PWA 100 y que la app es instalable
-- **Ojo con `vite.config.ts`:** está en la lista de archivos sensibles. Cambios a la sección PWA pueden romper el SW. Cambios cuidadosos y commit aparte si es posible.
-- **CSP en `vercel.json`:** `cdn.jsdelivr.net` ya está en `connect-src` (para Tesseract). Si el plugin-pwa necesita algo extra, anotarlo.
+- UI de calibración: 4 markers arrastrables sobre la preview que el usuario coloca en las esquinas del cartón.
+- Math: perspective transform de 4 puntos → rectángulo canónico (~50 líneas, Canvas puro, sin opencv.js).
+- El crop por celda en `tesseract.ts` debe trabajar sobre la imagen rectificada (en vez del canvas original).
+- Persistir las 4 esquinas elegidas (opcional: re-usar en próximo cartón si es el mismo formato).
+
+**F5.6 después de F5.5:**
+
+- Recuperar top-3 dígitos por celda de `data.symbols[i].choices` de Tesseract.
+- Autocorrección: si top-1 cae fuera de rango, probar top-2/top-3 dentro.
+- En `RevisionOCR`: chips de alternativas en celdas de baja confianza.
+- Toggle "Mostrar debug" en `/cartones/foto` con thumbnails y detected text por celda.
+
+**F6.1 (PWA) queda pospuesta** hasta cerrar F5 v2.
 
 ---
 
 ## Bitácora rápida
 
-| Fecha      | Evento                                                                                                                                             |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-15 | F5.3 completada: RevisionOCR (grilla editable, confianza visual), CrearCartonOCR refactorizado, warning < 30%. 17 tests nuevos, 272 totales. F5 ✅ |
-| 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.                       |
-| 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                                          |
-| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                                           |
-| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                                 |
-| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                                     |
-| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                                         |
-| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                                     |
-| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                                      |
-| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                                      |
-| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                                                |
-| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                                     |
-| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales.                     |
-| 2026-05-15 | F4.3 completada: Modal.tsx, HistorialSorteados, reiniciar con modal, cargarSesion en useEffect. 10 tests nuevos, 219 totales. F4 ✅                |
+| Fecha      | Evento                                                                                                                                                                        |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-15 | F5.4 completada: rediseño OCR — preprocess Canvas (gris/contraste/Otsu) + OCR por celda con PSM=8. 30 tests nuevos, 281 totales. F5 v2 in-progress.                           |
+| 2026-05-15 | Fix CSP runtime: auto-host worker+core de Tesseract (vite-plugin-static-copy), `'wasm-unsafe-eval'` en script-src para compilar WASM.                                         |
+| 2026-05-15 | F5.3 completada: RevisionOCR (grilla editable, confianza visual), CrearCartonOCR refactorizado, warning < 30%. 17 tests nuevos, 272 totales. F5 v1 ✅ (reemplazada por F5 v2) |
+| 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.                                                  |
+| 2026-05-15 | F5.1 completada: tesseract.js 7.0.0, core/ocr/, CrearCartonOCR lazy-loaded, 15 tests nuevos, 234 totales.                                                                     |
+| 2026-05-14 | Kit de documentación inicial generado con `project-kickstart`. 17 subfases planificadas.                                                                                      |
+| 2026-05-14 | F1.1 completada: bootstrap con Vite+React+TS+Tailwind, tubería de calidad operativa, 1 test verde.                                                                            |
+| 2026-05-14 | F1.2 completada: react-router-dom v7, estructura de carpetas, Layout, 3 rutas, 5 tests verdes.                                                                                |
+| 2026-05-15 | F2.1 completada: tipos, validación Zod, generador puro. 48 tests nuevos, cobertura 81.81%.                                                                                    |
+| 2026-05-15 | F2.2 completada: almacenamiento, Zustand store, CartonGrid, formulario, MisCartones. 79 tests.                                                                                |
+| 2026-05-15 | F3.1 completada: motor-juego puro (marcado, victoria, ranking). 41 tests nuevos, 120 totales.                                                                                 |
+| 2026-05-15 | F3.2 completada: editor visual de patrones, PatronCanvas táctil, store Zustand. 19 tests nuevos, 139 totales.                                                                 |
+| 2026-05-15 | F3.3 completada: store sesión, ConfiguracionJuego, Jugar actualizado. 30 tests nuevos, 169 totales.                                                                           |
+| 2026-05-15 | F4.1 completada: TecladoNumerico (1-75), marcado en vivo de cartones, historial. 22 tests nuevos, 191 totales.                                                                |
+| 2026-05-15 | F4.2 completada: CartonRankeado (memo), ranking dinámico en /jugar, badges BINGO/MUY CERCA/CASI. 18 tests nuevos, 209 totales.                                                |
+| 2026-05-15 | F4.3 completada: Modal.tsx, HistorialSorteados, reiniciar con modal, cargarSesion en useEffect. 10 tests nuevos, 219 totales. F4 ✅                                           |
