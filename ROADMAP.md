@@ -15,13 +15,14 @@
 
 ## Estado general
 
-| Métrica | Valor |
-|---------|-------|
-| Fases totales | 8 |
-| Subfases totales | 17 |
-| Completadas | 0 / 17 |
-| % avance | 0% |
-| Versión actual | — (pre-F1) |
+| Métrica          | Valor                                         |
+| ---------------- | --------------------------------------------- |
+| Fases totales    | 8                                             |
+| Subfases totales | 17                                            |
+| Completadas      | 14 / 17 (F5.5 y F5.6 pausadas — ver ADR-0004) |
+| % avance         | ~80%                                          |
+| Versión actual   | **v0.4.0** (local) — hito M3 alcanzado        |
+| Tests verdes     | 321                                           |
 
 ---
 
@@ -29,72 +30,81 @@
 
 ### F1: Setup del proyecto
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Completada
 
 **Subfases:**
-- ⏳ F1.1 — Bootstrap del proyecto y tubería de calidad
-- ⏳ F1.2 — Estructura de carpetas inicial, routing y deploy a Vercel
 
-**Entregable:** repo configurado, deploy en Vercel mostrando "Hello, Bingo Digital".
+- ✅ F1.1 — Bootstrap del proyecto y tubería de calidad
+- ✅ F1.2 — Estructura de carpetas inicial, routing y deploy a Vercel
+
+**Entregable cumplido:** repo configurado, deploy en Vercel activo en https://bingo-online-bice.vercel.app/.
 
 ---
 
 ### F2: Núcleo de cartones
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Completada
 
 **Subfases:**
-- ⏳ F2.1 — Modelo, validación y generador de cartones (`src/core/cartones/`)
-- ⏳ F2.2 — Almacenamiento, store y UI de creación manual
 
-**Entregable:** el usuario puede crear, listar y borrar cartones. Persisten al recargar.
+- ✅ F2.1 — Modelo, validación y generador de cartones (`src/core/cartones/`)
+- ✅ F2.2 — Almacenamiento, store y UI de creación manual
+
+**Entregable cumplido:** el usuario puede crear, listar y borrar cartones. Persisten al recargar.
 
 ---
 
 ### F3: Motor de juego
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Completada
 
 **Subfases:**
-- ⏳ F3.1 — Motor: marcado y condición de victoria
-- ⏳ F3.2 — Editor de patrones libres
-- ⏳ F3.3 — Integración del motor con stores y configuración de victoria
 
-**Entregable:** la lógica de marcado y ranking funciona en tests. Usuario puede dibujar patrones.
+- ✅ F3.1 — Motor: marcado y condición de victoria (100% cobertura)
+- ✅ F3.2 — Editor de patrones libres (con cards visuales tras polish post-F5)
+- ✅ F3.3 — Integración del motor con stores y configuración de victoria
+
+**Entregable cumplido:** la lógica de marcado y ranking funciona en tests. Usuario puede dibujar patrones y elegirlos durante el juego.
 
 ---
 
 ### F4: Modo presencial — marcador y ranking en vivo
 
-**Estado:** ⏳ Pendiente
+**Estado:** ✅ Completada — **tag `v0.4.0` (local)**
 
 **Subfases:**
-- ⏳ F4.1 — Teclado numérico y registro de números sorteados
-- ⏳ F4.2 — Ranking dinámico de cartones
-- ⏳ F4.3 — Historial de sorteados y reinicio de sesión
 
-**Entregable:** **un juego de bingo presencial funcional end-to-end sin OCR**. Hito intermedio sugerido: tag `v0.4.0`.
+- ✅ F4.1 — Teclado/Tablero numérico y registro de números sorteados
+- ✅ F4.2 — Ranking dinámico de cartones
+- ✅ F4.3 — Historial de sorteados y reinicio de sesión
+
+**Entregable cumplido:** **un juego de bingo presencial funcional end-to-end sin OCR**, con UX pulida (panel flotante de patrón, input numérico, layout reordenado, cards visuales). Hito **M3 alcanzado**.
 
 ---
 
 ### F5: OCR con Tesseract.js
 
-**Estado:** ⏳ Pendiente
+**Estado:** ⏸️ Pausada — ver `docs/adr/0004-ocr-pausado-v1.md`
 
 **Subfases:**
-- ⏳ F5.1 — Integración de Tesseract.js y captura de imagen
-- ⏳ F5.2 — Post-procesamiento: estructurar en grilla 5x5
-- ⏳ F5.3 — UI de confirmación editable y guardado
 
-**Entregable:** crear cartón tomando foto del cartón físico, con confirmación obligatoria. Tag sugerido: `v0.5.0`.
+- ✅ F5.1 — Integración de Tesseract.js y captura de imagen
+- ✅ F5.2 — Post-procesamiento: estructurar en grilla 5x5 (eliminado tras F5.4)
+- ✅ F5.3 — UI de confirmación editable y guardado
+- ✅ F5.4 — Rediseño: preprocess Canvas + OCR por celda con PSM=8
+- ⏸️ F5.5 — Calibración manual de 4 esquinas (no implementada)
+- ⏸️ F5.6 — Top-N candidatos + debug visual (no implementada)
+
+**Resultado real:** Tras probar F5.4 con fotos reales, la precisión fue insuficiente. El OCR queda en el repo bajo `FEATURES.ocr=false` (ver `src/config/features.ts`); UI muestra banner "OCR temporalmente deshabilitado" con CTA a creación manual. Alternativas futuras (Gemini Vision, Google Cloud Vision, etc.) documentadas en ADR-0004. **Tag `v0.5.0` cancelado** (era para OCR funcional).
 
 ---
 
 ### F6: PWA y observabilidad
 
-**Estado:** ⏳ Pendiente
+**Estado:** ⏳ Pendiente — **próxima subfase activa: F6.1**
 
 **Subfases:**
+
 - ⏳ F6.1 — Convertir a PWA con vite-plugin-pwa
 - ⏳ F6.2 — Sentry + Vercel Analytics
 
@@ -122,22 +132,24 @@
 
 ## Hitos clave (milestones)
 
-| Hito | Descripción | Cuándo se alcanza |
-|------|-------------|-------------------|
-| **M1 — Tubería de calidad** | Proyecto configurado, CI verde, deploy automático | Al cerrar F1.2 |
-| **M2 — Cartones funcionales** | Usuario crea/borra cartones con persistencia | Al cerrar F2.2 |
-| **M3 — Juego sin OCR** | Bingo presencial completo (manual) | Al cerrar F4.3 (tag `v0.4.0`) |
-| **M4 — Producto diferenciado** | OCR funcionando = diferenciador del producto | Al cerrar F5.3 (tag `v0.5.0`) |
-| **M5 — PWA en producción** | App instalable y offline | Al cerrar F6.2 |
-| **M6 — Beta lista** | Producto pulido para validación | Al cerrar F7 (tag `v0.9.0`) |
-| **M7 — V1.0 lanzada** | Release oficial | Al cerrar F8 (tag `v1.0.0`) |
+| Hito                           | Descripción                                       | Cuándo se alcanza                                |
+| ------------------------------ | ------------------------------------------------- | ------------------------------------------------ |
+| **M1 — Tubería de calidad**    | Proyecto configurado, CI verde, deploy automático | Al cerrar F1.2                                   |
+| **M2 — Cartones funcionales**  | Usuario crea/borra cartones con persistencia      | Al cerrar F2.2                                   |
+| **M3 — Juego sin OCR**         | Bingo presencial completo (manual)                | ✅ **Alcanzado 2026-05-16** (tag `v0.4.0` local) |
+| **M4 — Producto diferenciado** | OCR funcionando = diferenciador del producto      | ⏸️ **Pospuesto a v1.5+** — ver ADR-0004          |
+| **M5 — PWA en producción**     | App instalable y offline                          | Al cerrar F6.2                                   |
+| **M6 — Beta lista**            | Producto pulido para validación                   | Al cerrar F7 (tag `v0.9.0`)                      |
+| **M7 — V1.0 lanzada**          | Release oficial                                   | Al cerrar F8 (tag `v1.0.0`)                      |
 
 ---
 
 ## Roadmap post-v1 (planeación, no compromiso)
 
 ### v1.5 — Mejoras de experiencia (1-2 semanas)
+
 Solo se planifica con un NUEVO project-kickstart al cerrar v1.0 y recoger feedback de usuarios.
+
 - Modo oscuro
 - Sonidos y feedback háptico al marcar
 - Export de resultados a PDF
@@ -145,7 +157,9 @@ Solo se planifica con un NUEVO project-kickstart al cerrar v1.0 y recoger feedba
 - Mejoras de branding visual
 
 ### v2 — Modo virtual con Supabase (4-6 semanas)
+
 Requiere nuevo project-kickstart. Decisiones a re-evaluar al llegar:
+
 - Magic link vs OAuth
 - Manejo de pagos manuales con comprobante
 - Validación de ganador en servidor (Edge Function)
@@ -153,11 +167,13 @@ Requiere nuevo project-kickstart. Decisiones a re-evaluar al llegar:
 - Cumplimiento Ley 29733
 
 ### v2.5 — Pagos automáticos con Culqi (2-3 semanas)
+
 - Integración Culqi
 - Webhooks con verificación HMAC
 - Historial de transacciones del moderador
 
 ### v3 — Escala (según demanda)
+
 - Yape Business (cobros directos)
 - Múltiples moderadores por evento
 - App nativa con React Native compartiendo `src/core/`
@@ -168,9 +184,16 @@ Requiere nuevo project-kickstart. Decisiones a re-evaluar al llegar:
 
 > Anotar fecha y commit cada vez que se cierra una subfase.
 
-| Fecha | Subfase | Commit | Notas |
-|-------|---------|--------|-------|
-| _Pendiente — primera entrada al cerrar F1.1_ | — | — | — |
+| Fecha      | Subfase                  | Commit    | Notas                                                                  |
+| ---------- | ------------------------ | --------- | ---------------------------------------------------------------------- |
+| 2026-05-14 | F1.1 + F1.2              | varios    | Setup completo, deploy a Vercel.                                       |
+| 2026-05-15 | F2.1 + F2.2              | varios    | Cartones funcionales con persistencia. 79 tests.                       |
+| 2026-05-15 | F3.1 + F3.2 + F3.3       | varios    | Motor puro + editor patrones + sesión integrada. 169 tests.            |
+| 2026-05-15 | F4.1 + F4.2 + F4.3       | varios    | Juego presencial funcional end-to-end. 219 tests.                      |
+| 2026-05-15 | F5.1 + F5.2 + F5.3       | varios    | OCR primera versión (bbox heurístico). 272 tests.                      |
+| 2026-05-15 | F5.4 + pausa             | `173ffc3` | F5.4 rediseño OCR con preprocess + OCR por celda. Pausado tras prueba. |
+| 2026-05-16 | Polish UX + M3           | `e93c278` | Rediseño /jugar, panel flotante, cards visuales. 321 tests.            |
+| 2026-05-16 | **Cierre M3 → `v0.4.0`** | (este)    | Tag local creado. Próximo: F6.1 (PWA).                                 |
 
 ---
 
@@ -183,4 +206,4 @@ Requiere nuevo project-kickstart. Decisiones a re-evaluar al llegar:
 
 ---
 
-_Última actualización: 2026-05-14_
+_Última actualización: 2026-05-16_

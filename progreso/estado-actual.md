@@ -1,17 +1,20 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (OCR pausado tras prueba real — ver ADR-0004)
-**Última subfase completada:** **F5.4** (cuya feature queda detrás de un flag OFF en UI)
+**Última actualización:** 2026-05-16 (cierre M3 + polish UX → tag `v0.4.0`)
+**Hito alcanzado:** **M3 — Juego presencial sin OCR completo**
+**Última subfase implementada:** **F5.4** (pausada en UI tras feature flag)
 **Próxima subfase:** **F6.1 — Convertir a PWA con vite-plugin-pwa**. F5.5/F5.6 pausadas indefinidamente.
 
 ---
 
 ## Progreso global
 
-- Fases completadas: 3 / 8 (F1 ✅, F2 ✅; F3 y F4 también completas sin tag formal).
-- **F5 pausada en producción**: trabajo F5.1–F5.4 está en repo bajo tests, pero el flag `FEATURES.ocr=false` lo oculta al usuario final. Ver `docs/adr/0004-ocr-pausado-v1.md`.
-- Subfases completadas: 14 / 17 (F1.1–F4.3 + F5.4). F5.5 y F5.6 ya no están en el plan corto.
-- Porcentaje estimado: 80% (sube porque F5 ya no bloquea avanzar a F6).
+- Fases completas en producción: **4 / 8** (F1 ✅, F2 ✅, F3 ✅, F4 ✅).
+- **F5 pausada**: F5.1–F5.4 implementadas pero `FEATURES.ocr=false` las oculta al usuario final. Ver `docs/adr/0004-ocr-pausado-v1.md`.
+- Subfases completadas: **14 / 17** (F1.1–F4.3 + F5.4).
+- Tests: **321 verdes**, lint y typecheck limpios, build OK.
+- Tag: **`v0.4.0`** local (cierre de M3, juego presencial sin OCR).
+- Porcentaje estimado: ~80%.
 
 ---
 
@@ -94,6 +97,35 @@ UI para crear, listar y borrar patrones ganadores. Persistencia en localStorage:
 - **`src/modo-presencial/pages/EditorPatrones.tsx`:** página única en `/patrones` con vista lista (mini-preview de cada patrón) y vista crear (inline). Validación: nombre obligatorio (max 30), al menos 2 casillas activas además del FREE
 - **Router:** ruta `/patrones` añadida. **Layout:** link "Patrones" añadido (4 links en total)
 - **Tests:** 19 tests nuevos (8 PatronCanvas + 11 EditorPatrones). Total: **139 tests verdes**.
+
+### Polish UX post-F5 (cerrado 2026-05-16, tag `v0.4.0`)
+
+Tras pausar OCR, un bloque coordinado de cambios en `/jugar` y `/patrones` para cerrar M3 (juego presencial sin OCR) con UX pulida. No es una subfase F5/F6 formal — extiende F3/F4.
+
+**1. Rediseño de `/jugar`** (commit `f01095b`):
+
+- Layout reordenado: header → tira últimos 10 → bloque "input + display último número + deshacer" → cartones → tablero general → panel patrón flotante.
+- `UltimoNumeroDisplay`: display grande con letra (B-7, etc.) + botón "Deshacer último".
+- `InputNumeroSorteado`: campo numérico con preview dinámico de letra, validación rango 1-75, duplicados con error inline.
+- `TableroGeneral` (renombrado de TecladoNumerico): celdas marcadas muestran el número con fondo verde + ring (antes "✓"). Sigue clickeable.
+- `PanelPatronFlotante`: aside fixed bottom-right con mini-preview, colapsable a FAB 🎯, botón "Cambiar patrón".
+- `SelectorCondicion` + `ModalSeleccionarCondicion`: extraídos para compartir entre `/configurar` y modal en `/jugar`. Modo 'iniciar' (reinicia números) y 'cambiar' (preserva números sorteados).
+- `establecerCondicion` en el store ahora persiste cuando hay sesión activa.
+
+**2. Bug fix + botón "Modo juego"** (commit `2ab8c7a`):
+
+- Bug: cartones se perdían al recargar `/jugar` directamente — solución: `cargarCartones + cargarPatrones + cargarSesion` en el useEffect inicial.
+- Botón "Modo juego" al lado del título → abre `ModalSeleccionarCondicion` en modo 'cambiar'.
+- Nuevo flujo "elegir patrón": en el modal, opción "Patrón guardado" muestra botón **"Ir a elegir patrón →"** (en vez de `<select>`). Click → navega a `/patrones` con `state: { volverAJugar: true }`.
+- En `EditorPatrones`, el state `volverAJugar` activa modo selección: banner explicativo, botón verde "Usar para jugar" por patrón, "Guardar y usar" al crear, "Cancelar" para volver. Aplica `establecerCondicion + navigate('/jugar')` al elegir/crear.
+
+**3. Cards visuales en `/patrones` + nombre opcional** (commit `e93c278`):
+
+- `MiniPatronGrid`: componente compartido para mini-visualización 5×5 de patrones (mismo render en panel flotante y editor).
+- Cards en `/patrones` con preview gráfico (28px) en vez de `<pre>` ASCII. Grid responsive 1/2/3 columnas.
+- Nombre del patrón ahora **opcional**: si está vacío al guardar, se autogenera "Patrón N" buscando el primer entero libre.
+
+**Tests:** 321 verdes (+42 sobre los 279 del cierre F4.3). Incluye `SelectorCondicion.test.tsx` y modo selección de `EditorPatrones`.
 
 ### F5.4 — Preprocessing + OCR por celda (completada 2026-05-15)
 
@@ -281,6 +313,10 @@ Al arrancar la sesión de **F6.1**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-16 | **Cierre M3 → tag `v0.4.0` (local)**: juego presencial sin OCR completo y pulido. ROADMAP actualizado.                                                                        |
+| 2026-05-16 | Polish `/patrones`: cards visuales con MiniPatronGrid (compartido con panel flotante), nombre opcional con auto-generación "Patrón N". 321 tests.                             |
+| 2026-05-16 | Fix bug: cartones se perdían al recargar `/jugar` (faltaba cargarCartones/cargarPatrones en useEffect). Añadido botón "Modo juego" + flujo elegir patrón desde `/patrones`.   |
+| 2026-05-16 | Rediseño `/jugar`: panel flotante de patrón, InputNumeroSorteado, UltimoNumeroDisplay, TableroGeneral (renombre). Layout reordenado.                                          |
 | 2026-05-15 | OCR pausado en UI tras prueba real (feature flag `FEATURES.ocr=false`). F5.5/F5.6 fuera del plan corto. ADR-0004 documenta alternativas v1.5+. 284 tests verdes.              |
 | 2026-05-15 | F5.4 completada: rediseño OCR — preprocess Canvas (gris/contraste/Otsu) + OCR por celda con PSM=8. 30 tests nuevos, 281 totales. **Precisión insuficiente en foto real.**     |
 | 2026-05-15 | Fix CSP runtime: auto-host worker+core de Tesseract (vite-plugin-static-copy), `'wasm-unsafe-eval'` en script-src para compilar WASM.                                         |
