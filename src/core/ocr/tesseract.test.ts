@@ -1,12 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { procesarImagenOCR } from './tesseract'
 
 // Mock de tesseract.js — el worker real requiere WASM y red; no se usa en tests unitarios
 vi.mock('tesseract.js', () => ({
   createWorker: vi.fn(),
 }))
 
+// Mock de preprocess — jsdom no implementa Canvas 2D; los wrappers se prueban manualmente
+vi.mock('./preprocess', () => ({
+  imagenAImagenCanvas: vi.fn(async () => ({ width: 500, height: 500 }) as never),
+  preprocesarCanvas: vi.fn((c) => c),
+  cropCelda: vi.fn(() => ({ width: 100, height: 100 }) as never),
+}))
+
 import { createWorker } from 'tesseract.js'
+import { procesarImagenOCR } from './tesseract'
 
 const mockWorker = {
   setParameters: vi.fn().mockResolvedValue({}),
@@ -25,6 +32,10 @@ function crearImagenFake(tipo = 'image/jpeg'): File {
   return new File(['fake'], 'carton.jpg', { type: tipo })
 }
 
+function mockRecognize(text: string, confidence: number) {
+  return Promise.resolve({ data: { text, confidence } })
+}
+
 describe('procesarImagenOCR', () => {
   it('rechaza archivo que no es imagen', async () => {
     const pdf = new File(['data'], 'doc.pdf', { type: 'application/pdf' })
@@ -41,52 +52,84 @@ describe('procesarImagenOCR', () => {
     expect(createWorker).not.toHaveBeenCalled()
   })
 
-  it('retorna texto y bloques cuando Tesseract tiene éxito', async () => {
-    mockWorker.recognize.mockResolvedValue({
-      data: {
-        text: '5 18 33',
-        blocks: [
-          {
-            paragraphs: [
-              {
-                lines: [
-                  {
-                    words: [
-                      { text: '5', confidence: 95, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } },
-                      { text: '18', confidence: 80, bbox: { x0: 30, y0: 0, x1: 60, y1: 20 } },
-                      { text: '33', confidence: 70, bbox: { x0: 70, y0: 0, x1: 100, y1: 20 } },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    })
+  it('crea worker con workerPath y corePath locales', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('', 0))
+    await procesarImagenOCR(crearImagenFake())
+    expect(createWorker).toHaveBeenCalledWith(
+      'eng',
+      1,
+      expect.objectContaining({
+        workerPath: '/tesseract/worker.min.js',
+        corePath: '/tesseract-core',
+      }),
+    )
+  })
 
+  it('configura whitelist de dígitos y PSM 8 antes de reconocer', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('', 0))
+    await procesarImagenOCR(crearImagenFake())
+    expect(mockWorker.setParameters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tessedit_char_whitelist: '0123456789',
+        tessedit_pageseg_mode: '8',
+      }),
+    )
+  })
+
+  it('retorna GrillaDetectada con 24 celdas (excluye FREE)', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('7', 90))
     const result = await procesarImagenOCR(crearImagenFake())
     expect(result.ok).toBe(true)
     if (result.ok) {
-      expect(result.value.texto).toBe('5 18 33')
-      expect(result.value.bloques).toHaveLength(3)
-      expect(result.value.bloques[0].texto).toBe('5')
-      expect(result.value.bloques[0].confianza).toBe(95)
-      expect(result.value.bloques[1].texto).toBe('18')
+      expect(result.value.celdas).toHaveLength(24)
+      // Ninguna celda es (2,2) FREE
+      for (const c of result.value.celdas) {
+        expect(!(c.fila === 2 && c.columna === 2)).toBe(true)
+      }
     }
   })
 
-  it('configura whitelist de solo dígitos', async () => {
-    mockWorker.recognize.mockResolvedValue({
-      data: { text: '7', blocks: null },
-    })
-    await procesarImagenOCR(crearImagenFake())
-    expect(mockWorker.setParameters).toHaveBeenCalledWith({
-      tessedit_char_whitelist: '0123456789',
-    })
+  it('asigna candidato con confianza alta cuando el número está en rango de la columna', async () => {
+    // recognize devuelve "7" en cada celda. Solo en B (col 0, rango 1-15) es válido.
+    mockWorker.recognize.mockImplementation(() => mockRecognize('7', 95))
+    const result = await procesarImagenOCR(crearImagenFake())
+    if (!result.ok) throw new Error('expected ok')
+
+    const celdaB0 = result.value.celdas.find((c) => c.columna === 0 && c.fila === 0)!
+    expect(celdaB0.candidatos).toHaveLength(1)
+    expect(celdaB0.candidatos[0].numero).toBe(7)
+    expect(celdaB0.candidatos[0].confianza).toBe('alta')
   })
 
-  it('llama terminate() aunque reconocimiento falle', async () => {
+  it('marca confianza baja cuando el número cae fuera del rango de la columna', async () => {
+    // recognize devuelve "7" para todas — pero 7 no es válido en I (16-30), N, G, O.
+    mockWorker.recognize.mockImplementation(() => mockRecognize('7', 95))
+    const result = await procesarImagenOCR(crearImagenFake())
+    if (!result.ok) throw new Error('expected ok')
+
+    const celdaI0 = result.value.celdas.find((c) => c.columna === 1 && c.fila === 0)!
+    expect(celdaI0.candidatos[0].confianza).toBe('baja')
+  })
+
+  it('celdas sin texto numérico quedan con candidatos vacío', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('', 0))
+    const result = await procesarImagenOCR(crearImagenFake())
+    if (!result.ok) throw new Error('expected ok')
+    for (const c of result.value.celdas) {
+      expect(c.candidatos).toHaveLength(0)
+    }
+  })
+
+  it('descarta números fuera de [1, 75] (parsea texto basura)', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('999', 80))
+    const result = await procesarImagenOCR(crearImagenFake())
+    if (!result.ok) throw new Error('expected ok')
+    for (const c of result.value.celdas) {
+      expect(c.candidatos).toHaveLength(0)
+    }
+  })
+
+  it('llama terminate() aunque el reconocimiento falle', async () => {
     mockWorker.recognize.mockRejectedValue(new Error('WASM error'))
     const result = await procesarImagenOCR(crearImagenFake())
     expect(result.ok).toBe(false)
@@ -96,75 +139,32 @@ describe('procesarImagenOCR', () => {
     expect(mockWorker.terminate).toHaveBeenCalled()
   })
 
-  it('retorna error sin_texto cuando no hay texto ni bloques', async () => {
-    mockWorker.recognize.mockResolvedValue({
-      data: { text: '   ', blocks: null },
-    })
+  it('reporta error de inicialización cuando createWorker falla', async () => {
+    vi.mocked(createWorker).mockRejectedValueOnce(new Error('No se descargó el modelo'))
     const result = await procesarImagenOCR(crearImagenFake())
     expect(result.ok).toBe(false)
     if (!result.ok) {
-      expect(result.errors.tipo).toBe('sin_texto')
+      expect(result.errors.tipo).toBe('procesamiento_fallido')
+      expect(result.errors.mensaje).toMatch(/No se pudo iniciar el OCR/)
     }
   })
 
-  it('ignora palabras con texto vacío en los bloques', async () => {
-    mockWorker.recognize.mockResolvedValue({
-      data: {
-        text: '42',
-        blocks: [
-          {
-            paragraphs: [
-              {
-                lines: [
-                  {
-                    words: [
-                      { text: '', confidence: 10, bbox: { x0: 0, y0: 0, x1: 10, y1: 10 } },
-                      { text: '42', confidence: 88, bbox: { x0: 20, y0: 0, x1: 50, y1: 20 } },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    })
+  it('progreso avanza monotónicamente desde preprocess hasta 100', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('3', 85))
+    const capturado: number[] = []
+    await procesarImagenOCR(crearImagenFake(), (p) => capturado.push(p))
 
-    const result = await procesarImagenOCR(crearImagenFake())
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.value.bloques).toHaveLength(1)
-      expect(result.value.bloques[0].texto).toBe('42')
+    expect(capturado.length).toBeGreaterThan(0)
+    expect(capturado[capturado.length - 1]).toBe(100)
+    // No retrocede
+    for (let i = 1; i < capturado.length; i++) {
+      expect(capturado[i]).toBeGreaterThanOrEqual(capturado[i - 1])
     }
   })
 
-  it('mapea el progreso de Tesseract por etapas a un porcentaje 0-100 monotónico', async () => {
-    let loggerCb: ((m: { status: string; progress: number }) => void) | undefined
-
-    vi.mocked(createWorker).mockImplementation(async (_lang, _oem, options) => {
-      loggerCb = (options as { logger?: (m: unknown) => void }).logger as typeof loggerCb
-      // Dispara etapas previas al recognize para verificar que el progreso no queda en 0.
-      loggerCb?.({ status: 'loading tesseract core', progress: 1 })
-      loggerCb?.({ status: 'loading language traineddata', progress: 0.5 })
-      return mockWorker as never
-    })
-
-    mockWorker.recognize.mockImplementation(async () => {
-      loggerCb?.({ status: 'recognizing text', progress: 0 })
-      loggerCb?.({ status: 'recognizing text', progress: 1 })
-      return { data: { text: '1', blocks: null } }
-    })
-
-    const progresoCaptured: number[] = []
-    await procesarImagenOCR(crearImagenFake(), (p) => progresoCaptured.push(p))
-
-    // Las etapas previas avanzan el progreso (no queda en 0 durante la descarga).
-    expect(progresoCaptured.some((p) => p > 0 && p < 55)).toBe(true)
-    // recognize llega a 100 al final.
-    expect(progresoCaptured[progresoCaptured.length - 1]).toBe(100)
-    // Monotónicamente no decreciente.
-    for (let i = 1; i < progresoCaptured.length; i++) {
-      expect(progresoCaptured[i]).toBeGreaterThanOrEqual(progresoCaptured[i - 1])
-    }
+  it('hace recognize una vez por celda (24 veces, sin la FREE)', async () => {
+    mockWorker.recognize.mockImplementation(() => mockRecognize('', 0))
+    await procesarImagenOCR(crearImagenFake())
+    expect(mockWorker.recognize).toHaveBeenCalledTimes(24)
   })
 })

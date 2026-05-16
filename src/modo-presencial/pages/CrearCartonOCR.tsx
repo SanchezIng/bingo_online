@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { procesarImagenOCR, estructurarEnGrilla, consolidarCandidatos } from '@/core/ocr'
+import { procesarImagenOCR, consolidarCandidatos } from '@/core/ocr'
 import type { GrillaDetectada, OcrError } from '@/core/ocr'
 import { crearCartonDesdeNumeros } from '@/core/cartones'
 import type { NumerosCarton, NumerosCartonParcial } from '@/core/cartones'
@@ -9,7 +9,7 @@ import RevisionOCR from '@/modo-presencial/components/RevisionOCR'
 
 type Etapa = 'seleccion' | 'procesando' | 'revision' | 'error'
 
-const DIMENSIONES_FALLBACK = { w: 500, h: 500 }
+const PESO_CONFIANZA_PROMEDIO = { alta: 1, media: 0.6, baja: 0.2 } as const
 
 export default function CrearCartonOCR() {
   const navigate = useNavigate()
@@ -25,7 +25,6 @@ export default function CrearCartonOCR() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const prevUrlRef = useRef<string | null>(null)
-  const dimensionesRef = useRef<{ w: number; h: number } | null>(null)
 
   function resetEstado() {
     setPreviewUrl(null)
@@ -34,7 +33,6 @@ export default function CrearCartonOCR() {
     setNumerosBase(null)
     setConfianzaPromedio(null)
     setError(null)
-    dimensionesRef.current = null
     if (prevUrlRef.current) {
       URL.revokeObjectURL(prevUrlRef.current)
       prevUrlRef.current = null
@@ -49,7 +47,6 @@ export default function CrearCartonOCR() {
     if (prevUrlRef.current) URL.revokeObjectURL(prevUrlRef.current)
     const url = URL.createObjectURL(file)
     prevUrlRef.current = url
-    dimensionesRef.current = null
 
     setPreviewUrl(url)
     setEtapa('seleccion')
@@ -58,13 +55,6 @@ export default function CrearCartonOCR() {
     setGrillaDetectada(null)
     setNumerosBase(null)
     setConfianzaPromedio(null)
-  }
-
-  function handleImagenCargada(e: React.SyntheticEvent<HTMLImageElement>) {
-    const img = e.currentTarget
-    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-      dimensionesRef.current = { w: img.naturalWidth, h: img.naturalHeight }
-    }
   }
 
   async function handleProcesar() {
@@ -82,13 +72,17 @@ export default function CrearCartonOCR() {
       return
     }
 
-    const dims = dimensionesRef.current ?? DIMENSIONES_FALLBACK
-    const grilla = estructurarEnGrilla(result.value, dims)
+    const grilla = result.value
     const numeros = consolidarCandidatos(grilla)
 
-    const bloques = result.value.bloques
+    // Promedio de confianza ponderado por nivel (0-100)
+    const candidatos = grilla.celdas.flatMap((c) => c.candidatos)
     const promedio =
-      bloques.length > 0 ? bloques.reduce((s, b) => s + b.confianza, 0) / bloques.length : 0
+      candidatos.length > 0
+        ? (candidatos.reduce((s, c) => s + PESO_CONFIANZA_PROMEDIO[c.confianza], 0) /
+            candidatos.length) *
+          100
+        : 0
 
     setGrillaDetectada(grilla)
     setNumerosBase(numeros)
@@ -146,7 +140,6 @@ export default function CrearCartonOCR() {
                   src={previewUrl}
                   alt="Vista previa del cartón"
                   className="h-48 w-full object-contain"
-                  onLoad={handleImagenCargada}
                 />
               </div>
             )}

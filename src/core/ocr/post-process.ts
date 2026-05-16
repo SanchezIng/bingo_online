@@ -1,62 +1,5 @@
 import type { NumerosCartonParcial } from '@/core/cartones/types'
-import type { ResultadoOCRBruto, GrillaDetectada, CeldaDetectada } from './types'
-
-const RANGOS_COLUMNA: [number, number][] = [
-  [1, 15],
-  [16, 30],
-  [31, 45],
-  [46, 60],
-  [61, 75],
-]
-
-function mapearConfianza(confianzaTesseract: number): 'alta' | 'media' | 'baja' {
-  if (confianzaTesseract >= 80) return 'alta'
-  if (confianzaTesseract >= 50) return 'media'
-  return 'baja'
-}
-
-export function estructurarEnGrilla(
-  resultado: ResultadoOCRBruto,
-  dimensionesImagen: { w: number; h: number },
-): GrillaDetectada {
-  const { w, h } = dimensionesImagen
-  const celdaW = w / 5
-  const celdaH = h / 5
-
-  const celdaMap = new Map<string, CeldaDetectada>()
-  for (let fila = 0; fila < 5; fila++) {
-    for (let columna = 0; columna < 5; columna++) {
-      if (fila === 2 && columna === 2) continue
-      celdaMap.set(`${fila},${columna}`, { fila, columna, candidatos: [] })
-    }
-  }
-
-  for (const bloque of resultado.bloques) {
-    const numero = parseInt(bloque.texto.trim(), 10)
-    if (isNaN(numero)) continue
-
-    const cx = (bloque.bbox.x0 + bloque.bbox.x1) / 2
-    const cy = (bloque.bbox.y0 + bloque.bbox.y1) / 2
-
-    const columna = Math.min(Math.floor(cx / celdaW), 4)
-    const fila = Math.min(Math.floor(cy / celdaH), 4)
-
-    if (fila === 2 && columna === 2) continue
-
-    const celda = celdaMap.get(`${fila},${columna}`)
-    if (!celda) continue
-
-    let confianza = mapearConfianza(bloque.confianza)
-    const [min, max] = RANGOS_COLUMNA[columna]
-    if (numero < min || numero > max) {
-      confianza = 'baja'
-    }
-
-    celda.candidatos.push({ numero, confianza })
-  }
-
-  return { celdas: Array.from(celdaMap.values()) }
-}
+import type { CeldaDetectada, GrillaDetectada } from './types'
 
 const ORDEN_CONFIANZA: Record<'alta' | 'media' | 'baja', number> = {
   alta: 2,
@@ -64,6 +7,11 @@ const ORDEN_CONFIANZA: Record<'alta' | 'media' | 'baja', number> = {
   baja: 0,
 }
 
+/**
+ * Selecciona el candidato de mayor confianza por celda y produce un
+ * `NumerosCartonParcial` listo para presentar al usuario en la UI de revisión.
+ * Sin candidatos → null en esa casilla. La celda (2,2) siempre es 'FREE'.
+ */
 export function consolidarCandidatos(grilla: GrillaDetectada): NumerosCartonParcial {
   const lookup = new Map<string, CeldaDetectada>()
   for (const celda of grilla.celdas) {

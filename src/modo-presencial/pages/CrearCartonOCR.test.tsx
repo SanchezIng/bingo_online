@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import CrearCartonOCR from './CrearCartonOCR'
-import type { GrillaDetectada } from '@/core/ocr'
+import type { CandidatoOCR, GrillaDetectada } from '@/core/ocr'
 import type { NumerosCartonParcial } from '@/core/cartones'
 
 const navigateMock = vi.fn()
@@ -10,7 +10,6 @@ const agregarCartonMock = vi.fn()
 
 vi.mock('@/core/ocr', () => ({
   procesarImagenOCR: vi.fn(),
-  estructurarEnGrilla: vi.fn(),
   consolidarCandidatos: vi.fn(),
 }))
 
@@ -23,7 +22,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock }
 })
 
-import { procesarImagenOCR, estructurarEnGrilla, consolidarCandidatos } from '@/core/ocr'
+import { procesarImagenOCR, consolidarCandidatos } from '@/core/ocr'
 import { useCartonesStore } from '@/lib/stores/cartones'
 
 function renderOCR() {
@@ -38,12 +37,12 @@ function crearImagenFake(nombre = 'carton.jpg', tipo = 'image/jpeg'): File {
   return new File(['fake-image-data'], nombre, { type: tipo })
 }
 
-function grillaVaciaFake(): GrillaDetectada {
+function grillaConConfianza(nivel: CandidatoOCR['confianza']): GrillaDetectada {
   const celdas = []
   for (let fila = 0; fila < 5; fila++) {
     for (let columna = 0; columna < 5; columna++) {
       if (fila === 2 && columna === 2) continue
-      celdas.push({ fila, columna, candidatos: [] })
+      celdas.push({ fila, columna, candidatos: [{ numero: 7, confianza: nivel }] })
     }
   }
   return { celdas }
@@ -61,7 +60,6 @@ function numerosBaseCompletoFake(): NumerosCartonParcial {
 
 beforeEach(() => {
   vi.mocked(procesarImagenOCR).mockReset()
-  vi.mocked(estructurarEnGrilla).mockReset()
   vi.mocked(consolidarCandidatos).mockReset()
   navigateMock.mockReset()
   agregarCartonMock.mockReset()
@@ -109,15 +107,8 @@ describe('CrearCartonOCR', () => {
   it('al terminar OCR exitoso pasa a la etapa de revisión', async () => {
     vi.mocked(procesarImagenOCR).mockResolvedValue({
       ok: true,
-      value: {
-        texto: '5 18 33',
-        bloques: [
-          { texto: '5', confianza: 95, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } },
-          { texto: '18', confianza: 80, bbox: { x0: 30, y0: 0, x1: 60, y1: 20 } },
-        ],
-      },
+      value: grillaConConfianza('alta'),
     })
-    vi.mocked(estructurarEnGrilla).mockReturnValue(grillaVaciaFake())
     vi.mocked(consolidarCandidatos).mockReturnValue(numerosBaseCompletoFake())
 
     renderOCR()
@@ -130,22 +121,14 @@ describe('CrearCartonOCR', () => {
       expect(screen.getByRole('button', { name: /Guardar cartón/i })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /Volver a tomar foto/i })).toBeInTheDocument()
     })
-    expect(estructurarEnGrilla).toHaveBeenCalledOnce()
     expect(consolidarCandidatos).toHaveBeenCalledOnce()
   })
 
-  it('muestra warning cuando la confianza promedio es < 30%', async () => {
+  it('muestra warning cuando la confianza promedio es < 30% (todos baja)', async () => {
     vi.mocked(procesarImagenOCR).mockResolvedValue({
       ok: true,
-      value: {
-        texto: '5',
-        bloques: [
-          { texto: '5', confianza: 20, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } },
-          { texto: '8', confianza: 25, bbox: { x0: 30, y0: 0, x1: 60, y1: 20 } },
-        ],
-      },
+      value: grillaConConfianza('baja'),
     })
-    vi.mocked(estructurarEnGrilla).mockReturnValue(grillaVaciaFake())
     vi.mocked(consolidarCandidatos).mockReturnValue(numerosBaseCompletoFake())
 
     renderOCR()
@@ -159,15 +142,11 @@ describe('CrearCartonOCR', () => {
     })
   })
 
-  it('no muestra warning si la confianza promedio es ≥ 30%', async () => {
+  it('no muestra warning si la confianza promedio es ≥ 30% (todos alta)', async () => {
     vi.mocked(procesarImagenOCR).mockResolvedValue({
       ok: true,
-      value: {
-        texto: '5',
-        bloques: [{ texto: '5', confianza: 90, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } }],
-      },
+      value: grillaConConfianza('alta'),
     })
-    vi.mocked(estructurarEnGrilla).mockReturnValue(grillaVaciaFake())
     vi.mocked(consolidarCandidatos).mockReturnValue(numerosBaseCompletoFake())
 
     renderOCR()
@@ -183,12 +162,8 @@ describe('CrearCartonOCR', () => {
   it('al guardar el cartón llama agregarCarton con fuente=ocr y navega a /cartones', async () => {
     vi.mocked(procesarImagenOCR).mockResolvedValue({
       ok: true,
-      value: {
-        texto: '',
-        bloques: [{ texto: '5', confianza: 90, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } }],
-      },
+      value: grillaConConfianza('alta'),
     })
-    vi.mocked(estructurarEnGrilla).mockReturnValue(grillaVaciaFake())
     vi.mocked(consolidarCandidatos).mockReturnValue(numerosBaseCompletoFake())
 
     renderOCR()
@@ -212,12 +187,8 @@ describe('CrearCartonOCR', () => {
   it('al hacer click en "Volver a tomar foto" desde revisión, regresa a selección', async () => {
     vi.mocked(procesarImagenOCR).mockResolvedValue({
       ok: true,
-      value: {
-        texto: '',
-        bloques: [{ texto: '5', confianza: 90, bbox: { x0: 0, y0: 0, x1: 20, y1: 20 } }],
-      },
+      value: grillaConConfianza('alta'),
     })
-    vi.mocked(estructurarEnGrilla).mockReturnValue(grillaVaciaFake())
     vi.mocked(consolidarCandidatos).mockReturnValue(numerosBaseCompletoFake())
 
     renderOCR()
