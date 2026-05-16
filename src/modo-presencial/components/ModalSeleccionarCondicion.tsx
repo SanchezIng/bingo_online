@@ -9,6 +9,12 @@ interface ModalSeleccionarCondicionProps {
   onClose: () => void
   /** Callback opcional ejecutado tras confirmar (después de aplicar la condición). */
   onConfirmado?: () => void
+  /**
+   * Callback para el botón "Ir a elegir patrón →" dentro del selector.
+   * Pensado para que el caller navegue a /patrones. Se propaga al
+   * SelectorCondicion. Si no se provee, el selector usa el `<select>` clásico.
+   */
+  onElegirPatron?: () => void
 }
 
 /**
@@ -25,6 +31,7 @@ export default function ModalSeleccionarCondicion({
   condicionInicial,
   onClose,
   onConfirmado,
+  onElegirPatron,
 }: ModalSeleccionarCondicionProps) {
   const { establecerCondicion, reiniciarSesion } = useSesionStore()
 
@@ -45,6 +52,7 @@ export default function ModalSeleccionarCondicion({
         textoBoton={textoBoton}
         onConfirmar={handleConfirmar}
         onCancelar={onClose}
+        onElegirPatron={onElegirPatron}
       />
     </Modal>
   )

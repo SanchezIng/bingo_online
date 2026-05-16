@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import type { Patron } from '@/core/motor-juego'
 import { usePatronesStore } from '@/lib/stores/patrones'
+import { useSesionStore } from '@/lib/stores/sesion'
 import PatronCanvas from '@/modo-presencial/components/PatronCanvas'
 import { grillaInicial } from '@/modo-presencial/components/patronUtils'
 
@@ -18,7 +20,17 @@ function contarActivas(grilla: boolean[][]): number {
 type Vista = 'lista' | 'crear'
 
 export default function EditorPatrones() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const { patrones, cargarPatrones, agregarPatron, eliminarPatron } = usePatronesStore()
+  const { establecerCondicion } = useSesionStore()
+
+  // Modo "selección": el usuario llegó desde el modal "Modo juego" de /jugar
+  // (o desde /configurar) y quiere elegir un patrón para esta partida.
+  // Al elegir o crear, aplicamos la condición y volvemos a /jugar.
+  const enModoSeleccion =
+    (location.state as { volverAJugar?: boolean } | null)?.volverAJugar === true
+
   const [vista, setVista] = useState<Vista>('lista')
   const [grilla, setGrilla] = useState<boolean[][]>(grillaInicial)
   const [nombre, setNombre] = useState('')
@@ -39,6 +51,19 @@ export default function EditorPatrones() {
   function cancelar() {
     setVista('lista')
     setPatronAEliminar(null)
+  }
+
+  function aplicarYVolverAJugar(patronId: string) {
+    establecerCondicion({ tipo: 'patron', patronId })
+    navigate('/jugar')
+  }
+
+  function seleccionarParaJugar(id: string) {
+    aplicarYVolverAJugar(id)
+  }
+
+  function cancelarSeleccion() {
+    navigate('/jugar')
   }
 
   function guardar() {
@@ -64,6 +89,13 @@ export default function EditorPatrones() {
       creadoEn: new Date().toISOString(),
     }
     agregarPatron(patron)
+
+    if (enModoSeleccion) {
+      // El usuario vino desde /jugar a elegir/crear un patrón. Lo aplicamos
+      // inmediatamente y volvemos a la partida en curso.
+      aplicarYVolverAJugar(patron.id)
+      return
+    }
     setVista('lista')
   }
 
@@ -135,7 +167,7 @@ export default function EditorPatrones() {
             onClick={guardar}
             className="flex-1 rounded-lg bg-blue-600 py-3 text-sm font-medium text-white transition hover:bg-blue-700"
           >
-            Guardar patrón
+            {enModoSeleccion ? 'Guardar y usar' : 'Guardar patrón'}
           </button>
         </div>
       </div>
@@ -144,21 +176,48 @@ export default function EditorPatrones() {
 
   return (
     <div>
+      {enModoSeleccion && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          <p className="font-medium">Elige un patrón para esta partida</p>
+          <p className="mt-1 text-xs text-blue-700">
+            Al seleccionar uno, se aplicará como condición de victoria y volverás a la pantalla de
+            juego.
+          </p>
+        </div>
+      )}
+
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Mis patrones</h1>
-        <button
-          type="button"
-          onClick={abrirCrear}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-        >
-          + Nuevo patrón
-        </button>
+        <h1 className="text-xl font-bold text-gray-900">
+          {enModoSeleccion ? 'Elegir patrón' : 'Mis patrones'}
+        </h1>
+        <div className="flex gap-2">
+          {enModoSeleccion && (
+            <button
+              type="button"
+              onClick={cancelarSeleccion}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={abrirCrear}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+          >
+            + Nuevo patrón
+          </button>
+        </div>
       </div>
 
       {patrones.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
           <span className="text-4xl">🎯</span>
-          <p className="text-gray-600">Aún no has creado ningún patrón.</p>
+          <p className="text-gray-600">
+            {enModoSeleccion
+              ? 'No tienes patrones guardados. Crea uno para empezar a jugar.'
+              : 'Aún no has creado ningún patrón.'}
+          </p>
           <p className="text-sm text-gray-400">
             Los patrones definen qué casillas deben marcarse para ganar el bingo.
           </p>
@@ -167,7 +226,7 @@ export default function EditorPatrones() {
             onClick={abrirCrear}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
           >
-            Crear mi primer patrón
+            Crear patrón
           </button>
         </div>
       ) : (
@@ -216,6 +275,16 @@ export default function EditorPatrones() {
                   month: 'short',
                 })}
               </p>
+
+              {enModoSeleccion && (
+                <button
+                  type="button"
+                  onClick={() => seleccionarParaJugar(p.id)}
+                  className="mt-3 w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                >
+                  Usar para jugar
+                </button>
+              )}
             </li>
           ))}
         </ul>

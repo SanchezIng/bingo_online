@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { useCartonesStore } from '@/lib/stores/cartones'
 import { usePatronesStore } from '@/lib/stores/patrones'
@@ -21,6 +21,7 @@ function descripcionCondicion(condicion: CondicionVictoria, patrones: Patron[]):
 }
 
 export default function Jugar() {
+  const navigate = useNavigate()
   const {
     iniciadaEn,
     condicionVictoria,
@@ -29,14 +30,29 @@ export default function Jugar() {
     cargarSesion,
     rankingComputed,
   } = useSesionStore()
-  const { cartones } = useCartonesStore()
-  const { patrones } = usePatronesStore()
+  const { cartones, cargarCartones } = useCartonesStore()
+  const { patrones, cargarPatrones } = usePatronesStore()
   const [verHistorial, setVerHistorial] = useState(false)
   const [pedirConfirmaReinicio, setPedirConfirmaReinicio] = useState(false)
+  const [modalCondicionAbierto, setModalCondicionAbierto] = useState(false)
+
+  function abrirModoJuego() {
+    setModalCondicionAbierto(true)
+  }
+
+  function navegarAElegirPatron() {
+    setModalCondicionAbierto(false)
+    navigate('/patrones', { state: { volverAJugar: true } })
+  }
 
   useEffect(() => {
+    // Cargar todos los stores al montar; /jugar puede ser la primera ruta
+    // que el usuario visita tras un refresh (no podemos depender de que
+    // MisCartones o EditorPatrones se hayan montado antes).
     cargarSesion()
-  }, [cargarSesion])
+    cargarCartones()
+    cargarPatrones()
+  }, [cargarSesion, cargarCartones, cargarPatrones])
 
   // Si no hay sesión activa, abrir el modal de configuración directamente
   // en vez de un link a /configurar — el patrón se define justo antes de jugar.
@@ -71,9 +87,18 @@ export default function Jugar() {
       {/* Header: condición resumida + acciones */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-bold text-gray-800">
-            {descripcionCondicion(condicionVictoria, patrones)}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-gray-800">
+              {descripcionCondicion(condicionVictoria, patrones)}
+            </h1>
+            <button
+              type="button"
+              onClick={abrirModoJuego}
+              className="rounded-md border border-blue-600 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+            >
+              Modo juego
+            </button>
+          </div>
           <p className="text-sm text-gray-500">
             {numerosSorteados.length} número{numerosSorteados.length !== 1 ? 's' : ''} sorteado
             {numerosSorteados.length !== 1 ? 's' : ''} · {cartones.length} cartón
@@ -161,6 +186,16 @@ export default function Jugar() {
 
       {/* Panel patrón flotante */}
       <PanelPatronFlotante />
+
+      {/* Modal "Modo juego" — abierto desde el botón del header */}
+      {modalCondicionAbierto && (
+        <ModalSeleccionarCondicion
+          modo="cambiar"
+          condicionInicial={condicionVictoria}
+          onClose={() => setModalCondicionAbierto(false)}
+          onElegirPatron={navegarAElegirPatron}
+        />
+      )}
 
       {/* Modales */}
       {verHistorial && (

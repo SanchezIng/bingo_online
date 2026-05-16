@@ -1,9 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import PanelPatronFlotante from './PanelPatronFlotante'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { usePatronesStore } from '@/lib/stores/patrones'
 import type { CondicionVictoria, Patron } from '@/core/motor-juego'
+
+function renderPanel() {
+  return render(
+    <MemoryRouter>
+      <PanelPatronFlotante />
+    </MemoryRouter>,
+  )
+}
 
 vi.mock('@/lib/stores/sesion')
 vi.mock('@/lib/stores/patrones')
@@ -46,14 +55,14 @@ describe('PanelPatronFlotante', () => {
   it('muestra "Cartón lleno" cuando la condición es cartonLleno', () => {
     mockSesion({ tipo: 'cartonLleno' })
     mockPatrones()
-    render(<PanelPatronFlotante />)
+    renderPanel()
     expect(screen.getByText(/Cartón lleno/i)).toBeInTheDocument()
   })
 
   it('muestra "N casillas marcadas" cuando la condición es n_marcados', () => {
     mockSesion({ tipo: 'n_marcados', valor: 7 })
     mockPatrones()
-    render(<PanelPatronFlotante />)
+    renderPanel()
     expect(screen.getByText(/7 casillas marcadas/i)).toBeInTheDocument()
   })
 
@@ -66,21 +75,21 @@ describe('PanelPatronFlotante', () => {
     }
     mockSesion({ tipo: 'patron', patronId: 'p1' })
     mockPatrones([patron])
-    render(<PanelPatronFlotante />)
+    renderPanel()
     expect(screen.getByText('Línea diagonal')).toBeInTheDocument()
   })
 
   it('muestra "Patrón no encontrado" si el patronId no existe en el store', () => {
     mockSesion({ tipo: 'patron', patronId: 'inexistente' })
     mockPatrones([])
-    render(<PanelPatronFlotante />)
+    renderPanel()
     expect(screen.getByText(/Patrón no encontrado/i)).toBeInTheDocument()
   })
 
   it('botón "Cambiar patrón" abre el modal en modo "cambiar"', () => {
     mockSesion({ tipo: 'cartonLleno' })
     mockPatrones()
-    render(<PanelPatronFlotante />)
+    renderPanel()
     fireEvent.click(screen.getByRole('button', { name: /Cambiar patrón/i }))
     const modal = screen.getByTestId('modal-seleccionar-condicion')
     expect(modal).toBeInTheDocument()
@@ -90,7 +99,7 @@ describe('PanelPatronFlotante', () => {
   it('botón colapsar oculta el panel y muestra el FAB', () => {
     mockSesion({ tipo: 'cartonLleno' })
     mockPatrones()
-    render(<PanelPatronFlotante />)
+    renderPanel()
     expect(
       screen.getByRole('complementary', { name: /Panel del patrón actual/i }),
     ).toBeInTheDocument()
@@ -102,7 +111,7 @@ describe('PanelPatronFlotante', () => {
   it('FAB expandido vuelve a mostrar el panel', () => {
     mockSesion({ tipo: 'cartonLleno' })
     mockPatrones()
-    render(<PanelPatronFlotante />)
+    renderPanel()
     fireEvent.click(screen.getByRole('button', { name: /Colapsar panel/i }))
     fireEvent.click(screen.getByRole('button', { name: /Mostrar panel de patrón/i }))
     expect(

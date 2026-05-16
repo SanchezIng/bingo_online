@@ -248,6 +248,48 @@ describe('Jugar', () => {
     renderJugar()
     expect(mockCargar).toHaveBeenCalledTimes(1)
   })
+
+  it('llama cargarCartones al montar (bug: cartones se perdían al recargar /jugar)', () => {
+    const cargarCartonesMock = vi.fn()
+    mockSesion()
+    vi.mocked(useCartonesStore).mockReturnValue({
+      cartones: [],
+      error: null,
+      cargarCartones: cargarCartonesMock,
+      agregarCarton: vi.fn(),
+      eliminarCarton: vi.fn(),
+      editarCarton: vi.fn(),
+    })
+    renderJugar()
+    expect(cargarCartonesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('llama cargarPatrones al montar', () => {
+    const cargarPatronesMock = vi.fn()
+    mockSesion()
+    mockCartones()
+    vi.mocked(usePatronesStore).mockReturnValue({
+      patrones: [],
+      error: null,
+      cargarPatrones: cargarPatronesMock,
+      agregarPatron: vi.fn(),
+      eliminarPatron: vi.fn(),
+      renombrarPatron: vi.fn(),
+    })
+    renderJugar()
+    expect(cargarPatronesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('botón "Modo juego" en el header abre el modal en modo cambiar', () => {
+    mockSesion()
+    mockCartones()
+    renderJugar()
+    // En estado inicial no hay modal de condición visible.
+    expect(screen.queryByTestId('modal-seleccionar-condicion')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Modo juego/i }))
+    const modal = screen.getByTestId('modal-seleccionar-condicion')
+    expect(modal).toHaveAttribute('data-modo', 'cambiar')
+  })
 })
 
 describe('Jugar — ranking dinámico', () => {

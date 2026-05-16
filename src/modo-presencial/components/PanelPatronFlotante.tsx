@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { usePatronesStore } from '@/lib/stores/patrones'
 import ModalSeleccionarCondicion from './ModalSeleccionarCondicion'
@@ -26,10 +27,16 @@ function MiniPatron({ grilla }: { grilla: boolean[][] }) {
 }
 
 export default function PanelPatronFlotante() {
+  const navigate = useNavigate()
   const { condicionVictoria } = useSesionStore()
   const { patrones } = usePatronesStore()
   const [colapsado, setColapsado] = useState(false)
   const [modalAbierto, setModalAbierto] = useState(false)
+
+  function navegarAElegirPatron() {
+    setModalAbierto(false)
+    navigate('/patrones', { state: { volverAJugar: true } })
+  }
 
   const patronActual =
     condicionVictoria.tipo === 'patron'
@@ -51,6 +58,7 @@ export default function PanelPatronFlotante() {
             modo="cambiar"
             condicionInicial={condicionVictoria}
             onClose={() => setModalAbierto(false)}
+            onElegirPatron={navegarAElegirPatron}
           />
         )}
       </>
@@ -108,6 +116,7 @@ export default function PanelPatronFlotante() {
           modo="cambiar"
           condicionInicial={condicionVictoria}
           onClose={() => setModalAbierto(false)}
+          onElegirPatron={navegarAElegirPatron}
         />
       )}
     </>

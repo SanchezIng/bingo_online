@@ -9,6 +9,13 @@ interface SelectorCondicionProps {
   textoBoton: string
   onConfirmar: (condicion: CondicionVictoria) => void
   onCancelar?: () => void
+  /**
+   * Si se provee, la opción "Patrón guardado" muestra un botón
+   * "Ir a elegir patrón →" en vez del `<select>` interno. Pensado para
+   * los flujos donde queremos llevar al usuario a /patrones para
+   * elegir/crear, especialmente cuando el patrón a usar no existe aún.
+   */
+  onElegirPatron?: () => void
 }
 
 export default function SelectorCondicion({
@@ -16,6 +23,7 @@ export default function SelectorCondicion({
   textoBoton,
   onConfirmar,
   onCancelar,
+  onElegirPatron,
 }: SelectorCondicionProps) {
   const { patrones } = usePatronesStore()
 
@@ -33,7 +41,12 @@ export default function SelectorCondicion({
     return { tipo: 'cartonLleno' }
   }
 
-  const puedeConfirmar = tipo !== 'patron' || patrones.length > 0
+  // Cuando se usa el flujo "Ir a elegir patrón" (onElegirPatron), el botón
+  // principal solo puede aplicar la condición si ya hay un patronId concreto;
+  // sin eso el usuario debe ir a /patrones primero. En el flujo clásico (select)
+  // basta con que haya patrones disponibles.
+  const puedeConfirmar =
+    tipo !== 'patron' || (onElegirPatron ? patronId !== '' : patrones.length > 0)
 
   return (
     <div className="space-y-4">
@@ -96,7 +109,25 @@ export default function SelectorCondicion({
             <p className="font-medium text-gray-800">Patrón guardado</p>
             <p className="mb-2 text-sm text-gray-500">Gana quien complete el patrón elegido.</p>
             {tipo === 'patron' &&
-              (patrones.length === 0 ? (
+              (onElegirPatron ? (
+                <div className="space-y-2">
+                  {patronId && (
+                    <p className="text-xs text-gray-600">
+                      Patrón actual:{' '}
+                      <span className="font-medium text-gray-800">
+                        {patrones.find((p) => p.id === patronId)?.nombre ?? '(no encontrado)'}
+                      </span>
+                    </p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onElegirPatron}
+                    className="w-full rounded-lg border border-blue-600 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                  >
+                    Ir a elegir patrón →
+                  </button>
+                </div>
+              ) : patrones.length === 0 ? (
                 <p className="text-sm text-amber-600">
                   No tienes patrones guardados.{' '}
                   <a href="/patrones" className="underline">

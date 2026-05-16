@@ -3,9 +3,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import EditorPatrones from './EditorPatrones'
 import { usePatronesStore } from '@/lib/stores/patrones'
+import { useSesionStore } from '@/lib/stores/sesion'
 import type { Patron } from '@/core/motor-juego'
 
 vi.mock('@/lib/stores/patrones')
+vi.mock('@/lib/stores/sesion')
+
+const navigateMock = vi.fn()
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function defaultSesionMock() {
+  return {
+    iniciadaEn: null,
+    condicionVictoria: { tipo: 'cartonLleno' as const },
+    numerosSorteados: [],
+    establecerCondicion: vi.fn(),
+    agregarNumeroSorteado: vi.fn(),
+    deshacerUltimoNumero: vi.fn(),
+    reiniciarSesion: vi.fn(),
+    cargarSesion: vi.fn(),
+    rankingComputed: vi.fn(() => []),
+  }
+}
 
 const patronA: Patron = {
   id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
@@ -46,7 +68,9 @@ function renderEditor() {
 
 describe('EditorPatrones', () => {
   beforeEach(() => {
+    navigateMock.mockReset()
     vi.mocked(usePatronesStore).mockReturnValue(makeStoreMock())
+    vi.mocked(useSesionStore).mockReturnValue(defaultSesionMock())
   })
 
   describe('vista lista', () => {
@@ -160,5 +184,65 @@ describe('EditorPatrones', () => {
       expect(patronGuardado.grilla[2][2]).toBe(true) // FREE
       expect(typeof patronGuardado.id).toBe('string')
     })
+  })
+})
+
+// ─── Modo selección (volverAJugar) ───────────────────────────────────────────
+
+function renderEditorEnModoSeleccion() {
+  return render(
+    <MemoryRouter initialEntries={[{ pathname: '/patrones', state: { volverAJugar: true } }]}>
+      <EditorPatrones />
+    </MemoryRouter>,
+  )
+}
+
+describe('EditorPatrones — modo selección (volverAJugar)', () => {
+  beforeEach(() => {
+    navigateMock.mockReset()
+    vi.mocked(usePatronesStore).mockReturnValue(makeStoreMock([patronA, patronB]))
+    vi.mocked(useSesionStore).mockReturnValue(defaultSesionMock())
+  })
+
+  it('muestra banner "Elige un patrón para esta partida"', () => {
+    renderEditorEnModoSeleccion()
+    expect(screen.getByText(/Elige un patrón para esta partida/i)).toBeInTheDocument()
+  })
+
+  it('cada patrón tiene un botón "Usar para jugar"', () => {
+    renderEditorEnModoSeleccion()
+    expect(screen.getAllByRole('button', { name: /Usar para jugar/i })).toHaveLength(2)
+  })
+
+  it('click en "Usar para jugar" aplica la condición y navega a /jugar', () => {
+    const establecer = vi.fn()
+    vi.mocked(useSesionStore).mockReturnValue({
+      ...defaultSesionMock(),
+      establecerCondicion: establecer,
+    })
+    renderEditorEnModoSeleccion()
+    fireEvent.click(screen.getAllByRole('button', { name: /Usar para jugar/i })[0])
+    expect(establecer).toHaveBeenCalledWith({ tipo: 'patron', patronId: patronA.id })
+    expect(navigateMock).toHaveBeenCalledWith('/jugar')
+  })
+
+  it('botón "Cancelar" del header navega a /jugar', () => {
+    renderEditorEnModoSeleccion()
+    // Hay un botón "Cancelar" en el header en modo selección.
+    fireEvent.click(screen.getAllByRole('button', { name: /Cancelar/i })[0])
+    expect(navigateMock).toHaveBeenCalledWith('/jugar')
+  })
+
+  it('lista vacía muestra "Crear patrón" prominente', () => {
+    vi.mocked(usePatronesStore).mockReturnValue(makeStoreMock([]))
+    renderEditorEnModoSeleccion()
+    expect(screen.getByText(/No tienes patrones guardados/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Crear patrón/i })).toBeInTheDocument()
+  })
+
+  it('en vista crear el botón principal dice "Guardar y usar"', () => {
+    renderEditorEnModoSeleccion()
+    fireEvent.click(screen.getByRole('button', { name: /\+ Nuevo patrón/i }))
+    expect(screen.getByRole('button', { name: /Guardar y usar/i })).toBeInTheDocument()
   })
 })
