@@ -139,11 +139,22 @@ describe('EditorPatrones', () => {
       expect(screen.getByText(/Mis patrones/i)).toBeInTheDocument()
     })
 
-    it('muestra error si se intenta guardar sin nombre', () => {
+    it('guarda con un nombre auto-generado "Patrón N" si el campo se deja vacío', () => {
+      const mockAgregar = vi.fn()
+      vi.mocked(usePatronesStore).mockReturnValue({
+        ...makeStoreMock([]),
+        agregarPatron: mockAgregar,
+      })
       renderEditor()
       fireEvent.click(screen.getByRole('button', { name: /Nuevo patrón/i }))
+      // Activa 2 celdas para pasar la validación de grilla (centro ya cuenta).
+      const celdas = screen.getAllByLabelText(/Celda fila/i)
+      fireEvent.pointerDown(celdas[0])
+      fireEvent.pointerDown(celdas[1])
+      // Sin tocar el input de nombre, guardar.
       fireEvent.click(screen.getByRole('button', { name: /Guardar patrón/i }))
-      expect(screen.getByText(/El nombre es obligatorio/i)).toBeInTheDocument()
+      expect(mockAgregar).toHaveBeenCalledOnce()
+      expect(mockAgregar.mock.calls[0][0].nombre).toMatch(/^Patrón \d+$/)
     })
 
     it('muestra error si hay menos de 2 casillas activas (además del FREE)', () => {

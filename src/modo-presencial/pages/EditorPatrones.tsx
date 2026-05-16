@@ -5,16 +5,26 @@ import type { Patron } from '@/core/motor-juego'
 import { usePatronesStore } from '@/lib/stores/patrones'
 import { useSesionStore } from '@/lib/stores/sesion'
 import PatronCanvas from '@/modo-presencial/components/PatronCanvas'
+import MiniPatronGrid from '@/modo-presencial/components/MiniPatronGrid'
 import { grillaInicial } from '@/modo-presencial/components/patronUtils'
 
 const MAX_NOMBRE = 30
 
-function miniPreview(grilla: boolean[][]): string {
-  return grilla.map((frow) => frow.map((v) => (v ? '■' : '□')).join('')).join('\n')
-}
-
 function contarActivas(grilla: boolean[][]): number {
   return grilla.flat().filter(Boolean).length
+}
+
+/**
+ * Genera un nombre único "Patrón N" para cuando el usuario no llena el campo.
+ * Toma el siguiente número que no choque con los nombres ya existentes.
+ */
+function siguienteNombreDefault(patrones: Patron[]): string {
+  const usados = new Set(patrones.map((p) => p.nombre))
+  for (let i = patrones.length + 1; i < patrones.length + 100; i++) {
+    const candidato = `Patrón ${i}`
+    if (!usados.has(candidato)) return candidato
+  }
+  return `Patrón ${Date.now()}`
 }
 
 type Vista = 'lista' | 'crear'
@@ -68,10 +78,6 @@ export default function EditorPatrones() {
 
   function guardar() {
     const nombreTrim = nombre.trim()
-    if (!nombreTrim) {
-      setErrorNombre('El nombre es obligatorio.')
-      return
-    }
     if (nombreTrim.length > MAX_NOMBRE) {
       setErrorNombre(`Máximo ${MAX_NOMBRE} caracteres.`)
       return
@@ -82,9 +88,10 @@ export default function EditorPatrones() {
       return
     }
 
+    const nombreFinal = nombreTrim || siguienteNombreDefault(patrones)
     const patron: Patron = {
       id: uuidv4(),
-      nombre: nombreTrim,
+      nombre: nombreFinal,
       grilla,
       creadoEn: new Date().toISOString(),
     }
@@ -126,7 +133,7 @@ export default function EditorPatrones() {
 
         <div className="mb-4">
           <label htmlFor="patron-nombre" className="mb-1 block text-sm font-medium text-gray-700">
-            Nombre del patrón
+            Nombre del patrón <span className="font-normal text-gray-400">(opcional)</span>
           </label>
           <input
             id="patron-nombre"
@@ -142,7 +149,9 @@ export default function EditorPatrones() {
           />
           {errorNombre && <p className="mt-1 text-xs text-red-600">{errorNombre}</p>}
           <p className="mt-1 text-right text-xs text-gray-400">
-            {nombre.length}/{MAX_NOMBRE}
+            {nombre
+              ? `${nombre.length}/${MAX_NOMBRE}`
+              : 'Si lo dejas vacío, se nombrará automáticamente'}
           </p>
         </div>
 
@@ -230,46 +239,20 @@ export default function EditorPatrones() {
           </button>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {patrones.map((p: Patron) => (
-            <li key={p.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <h2 className="font-semibold text-gray-900">{p.nombre}</h2>
-                {patronAEliminar === p.id ? (
-                  <div className="flex gap-1">
-                    <button
-                      type="button"
-                      onClick={ejecutarEliminar}
-                      className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
-                    >
-                      Confirmar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPatronAEliminar(null)}
-                      className="rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => confirmarEliminar(p.id)}
-                    className="text-xs text-red-500 hover:text-red-700"
-                  >
-                    Borrar
-                  </button>
-                )}
+            <li
+              key={p.id}
+              className="flex flex-col items-center rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+            >
+              {/* Mini-preview visual centrado */}
+              <div className="mb-3 flex justify-center rounded-lg bg-gray-50 p-3">
+                <MiniPatronGrid grilla={p.grilla} celdaPx={28} />
               </div>
 
-              {/* Mini-preview de la grilla */}
-              <pre className="font-mono text-xs leading-tight text-gray-600">
-                {miniPreview(p.grilla)}
-              </pre>
-
-              <p className="mt-2 text-xs text-gray-400">
-                {contarActivas(p.grilla)} casillas activas ·{' '}
+              <h2 className="mb-1 text-center font-semibold text-gray-900">{p.nombre}</h2>
+              <p className="mb-3 text-center text-xs text-gray-400">
+                {contarActivas(p.grilla)} casillas ·{' '}
                 {new Date(p.creadoEn).toLocaleDateString('es', {
                   day: 'numeric',
                   month: 'short',
@@ -280,9 +263,36 @@ export default function EditorPatrones() {
                 <button
                   type="button"
                   onClick={() => seleccionarParaJugar(p.id)}
-                  className="mt-3 w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                  className="mb-2 w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
                 >
                   Usar para jugar
+                </button>
+              )}
+
+              {patronAEliminar === p.id ? (
+                <div className="flex w-full gap-1">
+                  <button
+                    type="button"
+                    onClick={ejecutarEliminar}
+                    className="flex-1 rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPatronAEliminar(null)}
+                    className="flex-1 rounded bg-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-300"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => confirmarEliminar(p.id)}
+                  className="text-xs font-medium text-red-500 hover:text-red-700"
+                >
+                  Borrar
                 </button>
               )}
             </li>

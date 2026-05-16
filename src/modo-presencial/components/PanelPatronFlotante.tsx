@@ -3,28 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { usePatronesStore } from '@/lib/stores/patrones'
 import ModalSeleccionarCondicion from './ModalSeleccionarCondicion'
-
-function MiniPatron({ grilla }: { grilla: boolean[][] }) {
-  return (
-    <div className="grid grid-cols-5 gap-0.5">
-      {grilla.flatMap((fila, fIdx) =>
-        fila.map((activa, cIdx) => {
-          const esFree = fIdx === 2 && cIdx === 2
-          return (
-            <div
-              key={`${fIdx}-${cIdx}`}
-              aria-hidden="true"
-              className={[
-                'h-5 w-5 rounded-sm',
-                esFree ? 'bg-yellow-400' : activa ? 'bg-blue-500' : 'bg-gray-200',
-              ].join(' ')}
-            />
-          )
-        }),
-      )}
-    </div>
-  )
-}
+import MiniPatronGrid from './MiniPatronGrid'
 
 export default function PanelPatronFlotante() {
   const navigate = useNavigate()
@@ -87,7 +66,7 @@ export default function PanelPatronFlotante() {
         <div className="mb-3 flex flex-col items-center gap-2">
           {patronActual ? (
             <>
-              <MiniPatron grilla={patronActual.grilla} />
+              <MiniPatronGrid grilla={patronActual.grilla} />
               <p className="text-center text-sm font-medium text-gray-800">{patronActual.nombre}</p>
             </>
           ) : condicionVictoria.tipo === 'cartonLleno' ? (
