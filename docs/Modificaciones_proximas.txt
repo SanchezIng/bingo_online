@@ -1,0 +1,4 @@
+El patron debe mostrate en al momento de jugar como una pequeña ventana, el patron debe crear cuando se va jugar, cuando se esta jugando el patron se debe poder cambiar sin cambiar de ventna poruqe no tendria usabilidad.
+2. Para anotar el numero ganador debe aver un input donde ponerlo.
+3. En el tablero general las casillas  deberian verse los numeros marcados.
+4. Ubicaciones el que muestra ultimo numero gramde, debe estar primero junto con su boton de desahcer, el tablero general si debe estar al ultimo.

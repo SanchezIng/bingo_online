@@ -161,7 +161,7 @@ describe('procesarImagenOCR', () => {
     // Las etapas previas avanzan el progreso (no queda en 0 durante la descarga).
     expect(progresoCaptured.some((p) => p > 0 && p < 55)).toBe(true)
     // recognize llega a 100 al final.
-    expect(progresoCaptured.at(-1)).toBe(100)
+    expect(progresoCaptured[progresoCaptured.length - 1]).toBe(100)
     // Monotónicamente no decreciente.
     for (let i = 1; i < progresoCaptured.length; i++) {
       expect(progresoCaptured[i]).toBeGreaterThanOrEqual(progresoCaptured[i - 1])
