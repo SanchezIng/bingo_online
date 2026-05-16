@@ -8,6 +8,10 @@ import type { NumerosCartonParcial } from '@/core/cartones'
 const navigateMock = vi.fn()
 const agregarCartonMock = vi.fn()
 
+// Por defecto los tests existentes asumen el feature ON (cubren el flujo OCR).
+// El test "con FEATURES.ocr=false" usa vi.doMock para overridear ese valor.
+vi.mock('@/config/features', () => ({ FEATURES: { ocr: true } }))
+
 vi.mock('@/core/ocr', () => ({
   procesarImagenOCR: vi.fn(),
   consolidarCandidatos: vi.fn(),

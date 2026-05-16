@@ -5,13 +5,65 @@ import type { GrillaDetectada, OcrError } from '@/core/ocr'
 import { crearCartonDesdeNumeros } from '@/core/cartones'
 import type { NumerosCarton, NumerosCartonParcial } from '@/core/cartones'
 import { useCartonesStore } from '@/lib/stores/cartones'
+import { FEATURES } from '@/config/features'
 import RevisionOCR from '@/modo-presencial/components/RevisionOCR'
 
 type Etapa = 'seleccion' | 'procesando' | 'revision' | 'error'
 
 const PESO_CONFIANZA_PROMEDIO = { alta: 1, media: 0.6, baja: 0.2 } as const
 
+function OCRDeshabilitado() {
+  return (
+    <div className="mx-auto max-w-lg px-4 py-8">
+      <div className="mb-6 flex items-center gap-3">
+        <Link to="/cartones" className="text-sm text-gray-500 hover:text-gray-700">
+          ← Mis cartones
+        </Link>
+        <h1 className="text-xl font-bold text-gray-800">Crear cartón con foto</h1>
+      </div>
+
+      <div
+        role="status"
+        className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900 shadow-sm"
+      >
+        <p className="mb-2 text-base font-semibold">OCR temporalmente deshabilitado</p>
+        <p className="mb-4">
+          La detección automática de números desde foto no alcanza la precisión necesaria con
+          frontend puro. Estamos evaluando alternativas (servicios de visión por API o backend
+          dedicado) para una versión futura.
+        </p>
+        <p className="mb-6">
+          Mientras tanto, usa la creación manual ingresando los números a mano.
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            to="/cartones/nuevo"
+            className="rounded-lg bg-blue-600 px-4 py-3 text-center text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Crear cartón manualmente
+          </Link>
+          <Link
+            to="/cartones"
+            className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Volver a mis cartones
+          </Link>
+        </div>
+      </div>
+
+      <p className="mt-4 text-center text-xs text-gray-400">
+        Ver <code>docs/adr/0004-ocr-pausado-v1.md</code> para el plan a futuro.
+      </p>
+    </div>
+  )
+}
+
 export default function CrearCartonOCR() {
+  if (!FEATURES.ocr) return <OCRDeshabilitado />
+  return <CrearCartonOCRImpl />
+}
+
+function CrearCartonOCRImpl() {
   const navigate = useNavigate()
   const { agregarCarton } = useCartonesStore()
 
