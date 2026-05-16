@@ -11,26 +11,26 @@
 
 ### En v1 (modo presencial, sin backend)
 
-| Activo | Tipo | Sensibilidad | Donde vive |
-|--------|------|---------------|------------|
-| Cartones del usuario | Dato personal pequeño (preferencia personal, no PII) | Baja | `localStorage` del navegador |
-| Patrones del usuario | Configuración personal | Baja | `localStorage` |
-| Fotos del cartón físico (OCR) | Imagen subida por el usuario | Media (potencialmente identifica al jugador si la foto incluye contexto) | Procesada en memoria, **jamás persistida ni transmitida** |
-| Integridad del código de la app | Código JavaScript servido a usuarios | Media | Repo + Vercel build pipeline |
-| Cadena de suministro npm | Paquetes que se instalan al hacer build | Alta | `pnpm-lock.yaml` + registro de npm |
-| DSN de Sentry | URL pública del proyecto Sentry | Baja (público por diseño) | `.env` → bundle del cliente |
-| Token de Sentry para CI | Permite subir sourcemaps | Alta | GitHub Secrets |
+| Activo                          | Tipo                                                 | Sensibilidad                                                             | Donde vive                                                |
+| ------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------- |
+| Cartones del usuario            | Dato personal pequeño (preferencia personal, no PII) | Baja                                                                     | `localStorage` del navegador                              |
+| Patrones del usuario            | Configuración personal                               | Baja                                                                     | `localStorage`                                            |
+| Fotos del cartón físico (OCR)   | Imagen subida por el usuario                         | Media (potencialmente identifica al jugador si la foto incluye contexto) | Procesada en memoria, **jamás persistida ni transmitida** |
+| Integridad del código de la app | Código JavaScript servido a usuarios                 | Media                                                                    | Repo + Vercel build pipeline                              |
+| Cadena de suministro npm        | Paquetes que se instalan al hacer build              | Alta                                                                     | `pnpm-lock.yaml` + registro de npm                        |
+| DSN de Sentry                   | URL pública del proyecto Sentry                      | Baja (público por diseño)                                                | `.env` → bundle del cliente                               |
+| Token de Sentry para CI         | Permite subir sourcemaps                             | Alta                                                                     | GitHub Secrets                                            |
 
 ### En v2 (modo virtual, con Supabase) — preview
 
-| Activo | Tipo | Sensibilidad | Donde vivirá |
-|--------|------|---------------|--------------|
-| Email del usuario | PII | Alta | Supabase Auth |
-| Eventos del moderador | Datos de negocio | Media | Postgres |
-| Comprobantes de pago subidos | Imágenes que pueden contener datos bancarios | **Crítica** | Supabase Storage |
-| Tokens de sesión (Supabase JWT) | Credencial activa | Crítica | Cookies HttpOnly + localStorage en cliente |
-| IPs de acceso | Dato personal indirecto | Media | Logs de Supabase Auth |
-| Llaves secretas (Supabase service_role, Culqi private_key) | Credenciales de servidor | **Crítica** | Solo en variables de entorno de Vercel (Edge Functions) |
+| Activo                                                     | Tipo                                         | Sensibilidad | Donde vivirá                                            |
+| ---------------------------------------------------------- | -------------------------------------------- | ------------ | ------------------------------------------------------- |
+| Email del usuario                                          | PII                                          | Alta         | Supabase Auth                                           |
+| Eventos del moderador                                      | Datos de negocio                             | Media        | Postgres                                                |
+| Comprobantes de pago subidos                               | Imágenes que pueden contener datos bancarios | **Crítica**  | Supabase Storage                                        |
+| Tokens de sesión (Supabase JWT)                            | Credencial activa                            | Crítica      | Cookies HttpOnly + localStorage en cliente              |
+| IPs de acceso                                              | Dato personal indirecto                      | Media        | Logs de Supabase Auth                                   |
+| Llaves secretas (Supabase service_role, Culqi private_key) | Credenciales de servidor                     | **Crítica**  | Solo en variables de entorno de Vercel (Edge Functions) |
 
 ---
 
@@ -158,11 +158,11 @@ La superficie de v1 es muy pequeña al no haber backend. Se documentan las amena
 
 ### En v1 (riesgo aceptado deliberadamente)
 
-| Pendiente | Razón de aceptación | Plan |
-|-----------|---------------------|------|
-| Subresource Integrity (SRI) en assets externos | En v1 no cargamos assets externos relevantes (Tesseract.js viene del bundle propio). | Activar si se añaden CDNs externos. |
-| WAF (Web Application Firewall) | Vercel tiene protección básica. WAF dedicado es overkill para esta superficie. | Considerar en v2 (con backend y pagos). |
-| Bug bounty / responsible disclosure | Proyecto personal pequeño. | Si crece la base de usuarios, abrir `SECURITY.md` con dirección de contacto. |
+| Pendiente                                      | Razón de aceptación                                                                                                                                                                                                                                                                                     | Plan                                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Subresource Integrity (SRI) en assets externos | Worker + core de Tesseract.js auto-hospedados desde `node_modules` vía `vite-plugin-static-copy` (servidos desde mismo origen). El modelo `eng.traineddata` se descarga de `cdn.jsdelivr.net` en runtime (~10 MB) y se permite en `connect-src` de CSP. No es código ejecutable; solo datos del modelo. | Activar SRI si en el futuro cargamos scripts adicionales desde CDN.          |
+| WAF (Web Application Firewall)                 | Vercel tiene protección básica. WAF dedicado es overkill para esta superficie.                                                                                                                                                                                                                          | Considerar en v2 (con backend y pagos).                                      |
+| Bug bounty / responsible disclosure            | Proyecto personal pequeño.                                                                                                                                                                                                                                                                              | Si crece la base de usuarios, abrir `SECURITY.md` con dirección de contacto. |
 
 ### Para v2 (obligatorio al introducir Supabase)
 

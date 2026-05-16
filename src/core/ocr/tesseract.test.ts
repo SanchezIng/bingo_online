@@ -138,16 +138,19 @@ describe('procesarImagenOCR', () => {
     }
   })
 
-  it('llama onProgreso con el porcentaje durante reconocimiento', async () => {
+  it('mapea el progreso de Tesseract por etapas a un porcentaje 0-100 monotónico', async () => {
     let loggerCb: ((m: { status: string; progress: number }) => void) | undefined
 
     vi.mocked(createWorker).mockImplementation(async (_lang, _oem, options) => {
       loggerCb = (options as { logger?: (m: unknown) => void }).logger as typeof loggerCb
+      // Dispara etapas previas al recognize para verificar que el progreso no queda en 0.
+      loggerCb?.({ status: 'loading tesseract core', progress: 1 })
+      loggerCb?.({ status: 'loading language traineddata', progress: 0.5 })
       return mockWorker as never
     })
 
     mockWorker.recognize.mockImplementation(async () => {
-      loggerCb?.({ status: 'recognizing text', progress: 0.5 })
+      loggerCb?.({ status: 'recognizing text', progress: 0 })
       loggerCb?.({ status: 'recognizing text', progress: 1 })
       return { data: { text: '1', blocks: null } }
     })
@@ -155,7 +158,13 @@ describe('procesarImagenOCR', () => {
     const progresoCaptured: number[] = []
     await procesarImagenOCR(crearImagenFake(), (p) => progresoCaptured.push(p))
 
-    expect(progresoCaptured).toContain(50)
-    expect(progresoCaptured).toContain(100)
+    // Las etapas previas avanzan el progreso (no queda en 0 durante la descarga).
+    expect(progresoCaptured.some((p) => p > 0 && p < 55)).toBe(true)
+    // recognize llega a 100 al final.
+    expect(progresoCaptured.at(-1)).toBe(100)
+    // Monotónicamente no decreciente.
+    for (let i = 1; i < progresoCaptured.length; i++) {
+      expect(progresoCaptured[i]).toBeGreaterThanOrEqual(progresoCaptured[i - 1])
+    }
   })
 })
