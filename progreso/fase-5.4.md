@@ -1,8 +1,10 @@
 # Handoff — Subfase F5.4: Preprocessing + OCR por celda
 
 **Fecha de cierre:** 2026-05-15
-**Estado:** ✅ Completada
-**Siguiente:** F5.5 — Calibración manual de 4 esquinas + perspective warp
+**Estado:** ✅ Implementación completada, ❌ **funcionalidad pausada en UI**
+**Siguiente:** F6.1 (PWA). **F5.5 y F5.6 fuera del plan corto** — ver `docs/adr/0004-ocr-pausado-v1.md`.
+
+> **Actualización 2026-05-15 (post-cierre):** tras probar el flujo F5.4 con una foto real de cartón, la precisión fue insuficiente (el OCR retorna números no presentes en el cartón). El usuario decidió pausar la funcionalidad. El código queda en cuarentena tras un feature flag (`FEATURES.ocr=false` en `src/config/features.ts`). Los tests siguen ejecutándose contra el código pausado. Ver ADR-0004 para alternativas (Gemini Vision, Google Cloud Vision, AWS Textract, modelo CV propio).
 
 ---
 

@@ -1,16 +1,17 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-15 (F5.4 completada — rediseño de OCR)
-**Última subfase completada:** **F5.4 — Preprocessing + OCR por celda**
-**Próxima subfase:** **F5.5 — Calibración manual de 4 esquinas + perspective warp** (luego F5.6: top-N candidatos + debug visual). F6.1 queda para después de F5 v2.
+**Última actualización:** 2026-05-15 (OCR pausado tras prueba real — ver ADR-0004)
+**Última subfase completada:** **F5.4** (cuya feature queda detrás de un flag OFF en UI)
+**Próxima subfase:** **F6.1 — Convertir a PWA con vite-plugin-pwa**. F5.5/F5.6 pausadas indefinidamente.
 
 ---
 
 ## Progreso global
 
-- Fases completadas: 3 / 8 (F1 ✅, F2 ✅; F3 y F4 también completas pero sin tag formal). **F5 v1 reemplazada por F5 v2 in-progress**.
-- Subfases completadas: 14 / 17 originales + F5.4 = 14 / 19 efectivas (F5.5 y F5.6 nuevas pendientes).
-- Porcentaje estimado: 74% (bajó porque añadimos 2 subfases al plan)
+- Fases completadas: 3 / 8 (F1 ✅, F2 ✅; F3 y F4 también completas sin tag formal).
+- **F5 pausada en producción**: trabajo F5.1–F5.4 está en repo bajo tests, pero el flag `FEATURES.ocr=false` lo oculta al usuario final. Ver `docs/adr/0004-ocr-pausado-v1.md`.
+- Subfases completadas: 14 / 17 (F1.1–F4.3 + F5.4). F5.5 y F5.6 ya no están en el plan corto.
+- Porcentaje estimado: 80% (sube porque F5 ya no bloquea avanzar a F6).
 
 ---
 
@@ -241,32 +242,38 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F5.5)
+## Notas para la próxima sesión de Claude Code (F6.1)
 
-Al arrancar la sesión de **F5.5**, leer en este orden:
+Al arrancar la sesión de **F6.1**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-5.4.md`
-4. La nota interna sobre F5 v2 en este mismo archivo (sección F5.4)
+3. `docs/adr/0004-ocr-pausado-v1.md` (contexto reciente sobre F5)
+4. `progreso/fase-5.4.md` (último handoff con detalles del flujo OCR en cuarentena)
+5. Sección F6.1 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F5.5:** verificar que `pnpm test:run` pasa 281 tests verdes.
+**Prerequisito de F6.1:** verificar que `pnpm test:run` pasa 284 tests verdes.
 
-**F5.5 debe:**
+**F6.1 debe:**
 
-- UI de calibración: 4 markers arrastrables sobre la preview que el usuario coloca en las esquinas del cartón.
-- Math: perspective transform de 4 puntos → rectángulo canónico (~50 líneas, Canvas puro, sin opencv.js).
-- El crop por celda en `tesseract.ts` debe trabajar sobre la imagen rectificada (en vez del canvas original).
-- Persistir las 4 esquinas elegidas (opcional: re-usar en próximo cartón si es el mismo formato).
+- Instalar `vite-plugin-pwa` + Workbox y configurar generación de service worker.
+- `manifest.webmanifest` con nombre, iconos (192×192, 512×512, maskable), theme color, display=standalone.
+- Estrategia offline para la app principal y assets estáticos.
+- Verificar Lighthouse PWA 100 y que la app es instalable.
 
-**F5.6 después de F5.5:**
+**Advertencias para F6.1:**
 
-- Recuperar top-3 dígitos por celda de `data.symbols[i].choices` de Tesseract.
-- Autocorrección: si top-1 cae fuera de rango, probar top-2/top-3 dentro.
-- En `RevisionOCR`: chips de alternativas en celdas de baja confianza.
-- Toggle "Mostrar debug" en `/cartones/foto` con thumbnails y detected text por celda.
+- `vite.config.ts` ya tiene `vite-plugin-static-copy` configurado para emitir los assets de Tesseract (~12 MB) al dist. Mientras `FEATURES.ocr=false` esos assets son peso muerto en el deploy. ADR-0004 dejó esto como pendiente — decidir antes de F6.1 si:
+  - a) Dejarlos (rápido de reactivar OCR el día que se decida).
+  - b) Condicionar `viteStaticCopy` a `FEATURES.ocr` (más build complejo).
+- `vercel.json` tiene `'wasm-unsafe-eval'` en script-src para WASM de Tesseract. Si OCR queda definitivamente fuera, evaluar quitarlo (endurece CSP). Por ahora, dejar.
+- El service worker NO debe precachear los archivos de Tesseract (~12 MB) si OCR está deshabilitado. Excluir explícitamente en la configuración del plugin-pwa.
 
-**F6.1 (PWA) queda pospuesta** hasta cerrar F5 v2.
+**OCR — si vuelve a la mesa:**
+
+- Ver `docs/adr/0004-ocr-pausado-v1.md` — tabla con 5 alternativas (Gemini Vision recomendada por calidad/costo).
+- Cambiar `FEATURES.ocr` a `true` reactiva todo el flujo F5.4 inmediatamente (los tests siguen verdes).
+- F5.5 (calibración 4 esquinas) y F5.6 (top-N + debug) están fuera del plan corto.
 
 ---
 
@@ -274,7 +281,8 @@ Al arrancar la sesión de **F5.5**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-05-15 | F5.4 completada: rediseño OCR — preprocess Canvas (gris/contraste/Otsu) + OCR por celda con PSM=8. 30 tests nuevos, 281 totales. F5 v2 in-progress.                           |
+| 2026-05-15 | OCR pausado en UI tras prueba real (feature flag `FEATURES.ocr=false`). F5.5/F5.6 fuera del plan corto. ADR-0004 documenta alternativas v1.5+. 284 tests verdes.              |
+| 2026-05-15 | F5.4 completada: rediseño OCR — preprocess Canvas (gris/contraste/Otsu) + OCR por celda con PSM=8. 30 tests nuevos, 281 totales. **Precisión insuficiente en foto real.**     |
 | 2026-05-15 | Fix CSP runtime: auto-host worker+core de Tesseract (vite-plugin-static-copy), `'wasm-unsafe-eval'` en script-src para compilar WASM.                                         |
 | 2026-05-15 | F5.3 completada: RevisionOCR (grilla editable, confianza visual), CrearCartonOCR refactorizado, warning < 30%. 17 tests nuevos, 272 totales. F5 v1 ✅ (reemplazada por F5 v2) |
 | 2026-05-15 | F5.2 completada: post-process.ts (estructurarEnGrilla + consolidarCandidatos), 3 tipos nuevos, 21 tests nuevos, 255 totales.                                                  |
