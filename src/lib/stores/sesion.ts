@@ -34,7 +34,13 @@ export const useSesionStore = create<SesionState>((set, get) => ({
   iniciadaEn: null,
 
   establecerCondicion: (condicion) => {
+    const { numerosSorteados, iniciadaEn } = get()
     set({ condicionVictoria: condicion })
+    // Si hay sesión activa, persistir el cambio para que sobreviva a recargas.
+    // Si no, queda solo en memoria hasta que reiniciarSesion la materialice.
+    if (iniciadaEn !== null) {
+      persistirSesion(numerosSorteados, iniciadaEn, condicion)
+    }
   },
 
   agregarNumeroSorteado: (n) => {

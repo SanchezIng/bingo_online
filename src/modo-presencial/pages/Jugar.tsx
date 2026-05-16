@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom'
 import { useSesionStore } from '@/lib/stores/sesion'
 import { useCartonesStore } from '@/lib/stores/cartones'
 import { usePatronesStore } from '@/lib/stores/patrones'
-import type { CondicionVictoria } from '@/core/motor-juego'
-import type { Patron } from '@/core/motor-juego'
+import type { CondicionVictoria, Patron } from '@/core/motor-juego'
 import CartonRankeado from '../components/CartonRankeado'
-import TecladoNumerico from '../components/TecladoNumerico'
+import TableroGeneral from '../components/TableroGeneral'
 import HistorialSorteados from '../components/HistorialSorteados'
+import UltimoNumeroDisplay from '../components/UltimoNumeroDisplay'
+import InputNumeroSorteado from '../components/InputNumeroSorteado'
+import PanelPatronFlotante from '../components/PanelPatronFlotante'
+import ModalSeleccionarCondicion from '../components/ModalSeleccionarCondicion'
 import Modal from '@/shared/components/Modal'
 
 function descripcionCondicion(condicion: CondicionVictoria, patrones: Patron[]): string {
@@ -35,22 +38,26 @@ export default function Jugar() {
     cargarSesion()
   }, [cargarSesion])
 
+  // Si no hay sesión activa, abrir el modal de configuración directamente
+  // en vez de un link a /configurar — el patrón se define justo antes de jugar.
   if (!iniciadaEn) {
     return (
-      <div className="px-4 py-8 text-center">
-        <h1 className="mb-4 text-2xl font-bold text-gray-800">Modo juego</h1>
-        <p className="mb-6 text-gray-500">No hay ninguna sesión activa.</p>
-        <Link
-          to="/configurar"
-          className="inline-block rounded-lg bg-green-600 px-6 py-3 font-semibold text-white hover:bg-green-700"
-        >
-          Configurar juego
-        </Link>
+      <div className="px-4 py-8">
+        <h1 className="mb-4 text-center text-2xl font-bold text-gray-800">Modo juego</h1>
+        <p className="mb-6 text-center text-gray-500">
+          Configura la condición de victoria para empezar.
+        </p>
+        <ModalSeleccionarCondicion
+          modo="iniciar"
+          onClose={() => {
+            // En modo "iniciar" no hay cómo cancelar sin sesión: redirigimos a /cartones
+            window.location.assign('/cartones')
+          }}
+        />
       </div>
     )
   }
 
-  const ultimosNumeros = [...numerosSorteados].reverse().slice(0, 10)
   const ranking = rankingComputed()
   const cartonMap = new Map(cartones.map((c) => [c.id, c]))
 
@@ -60,7 +67,8 @@ export default function Jugar() {
   }
 
   return (
-    <div className="px-4 py-4">
+    <div className="px-4 py-4 pb-24">
+      {/* Header: condición resumida + acciones */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-bold text-gray-800">
@@ -88,37 +96,48 @@ export default function Jugar() {
         </div>
       </div>
 
-      {ultimosNumeros.length > 0 && (
+      {/* Tira con los últimos 10 sorteados (más reciente primero) */}
+      {numerosSorteados.length > 0 && (
         <div
           role="region"
           className="mb-4 flex gap-1.5 overflow-x-auto pb-1"
           aria-label="Historial de números sorteados"
         >
-          {ultimosNumeros.map((n, idx) => (
-            <span
-              key={`${n}-${idx}`}
-              className={[
-                'shrink-0 rounded px-2 py-1 text-xs font-semibold',
-                idx === 0 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600',
-              ].join(' ')}
-            >
-              {n}
-            </span>
-          ))}
+          {[...numerosSorteados]
+            .reverse()
+            .slice(0, 10)
+            .map((n, idx) => (
+              <span
+                key={`${n}-${idx}`}
+                className={[
+                  'shrink-0 rounded px-2 py-1 text-xs font-semibold',
+                  idx === 0 ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600',
+                ].join(' ')}
+              >
+                {n}
+              </span>
+            ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-start">
-        <div className="order-1 flex flex-1 flex-col gap-4 md:order-2">
-          {cartones.length === 0 ? (
-            <p className="rounded-lg bg-gray-50 py-6 text-center text-sm text-gray-400">
-              Sin cartones.{' '}
-              <Link to="/cartones/nuevo" className="text-blue-600 hover:underline">
-                Añadir cartón
-              </Link>
-            </p>
-          ) : (
-            ranking
+      {/* 1) Input + último número + deshacer */}
+      <section className="mb-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <InputNumeroSorteado />
+        <UltimoNumeroDisplay />
+      </section>
+
+      {/* 2) Cartones */}
+      <section className="mb-6" aria-label="Cartones en juego">
+        {cartones.length === 0 ? (
+          <p className="rounded-lg bg-gray-50 py-6 text-center text-sm text-gray-400">
+            Sin cartones.{' '}
+            <Link to="/cartones/nuevo" className="text-blue-600 hover:underline">
+              Añadir cartón
+            </Link>
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {ranking
               .map((entradaRanking, idx) => {
                 const carton = cartonMap.get(entradaRanking.cartonId)
                 if (!carton) return null
@@ -132,15 +151,18 @@ export default function Jugar() {
                   />
                 )
               })
-              .filter(Boolean)
-          )}
-        </div>
+              .filter(Boolean)}
+          </div>
+        )}
+      </section>
 
-        <div className="order-2 md:order-1 md:w-64 md:shrink-0">
-          <TecladoNumerico />
-        </div>
-      </div>
+      {/* 3) Tablero general (todos los 75 números) */}
+      <TableroGeneral />
 
+      {/* Panel patrón flotante */}
+      <PanelPatronFlotante />
+
+      {/* Modales */}
       {verHistorial && (
         <Modal titulo="Historial de números" onClose={() => setVerHistorial(false)}>
           <HistorialSorteados numerosSorteados={numerosSorteados} />

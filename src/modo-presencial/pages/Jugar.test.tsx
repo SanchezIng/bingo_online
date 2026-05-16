@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import Jugar from './Jugar'
@@ -11,8 +11,22 @@ import type { RankingEntry } from '@/core/motor-juego'
 vi.mock('@/lib/stores/sesion')
 vi.mock('@/lib/stores/cartones')
 vi.mock('@/lib/stores/patrones')
-vi.mock('../components/TecladoNumerico', () => ({
-  default: () => <div data-testid="teclado-numerico" />,
+vi.mock('../components/TableroGeneral', () => ({
+  default: () => <div data-testid="tablero-general" />,
+}))
+vi.mock('../components/UltimoNumeroDisplay', () => ({
+  default: () => <div data-testid="ultimo-numero-display" />,
+}))
+vi.mock('../components/InputNumeroSorteado', () => ({
+  default: () => <div data-testid="input-numero-sorteado" />,
+}))
+vi.mock('../components/PanelPatronFlotante', () => ({
+  default: () => <div data-testid="panel-patron-flotante" />,
+}))
+vi.mock('../components/ModalSeleccionarCondicion', () => ({
+  default: ({ modo }: { modo: string }) => (
+    <div data-testid="modal-seleccionar-condicion" data-modo={modo} />
+  ),
 }))
 
 const cartonBase: Carton = {
@@ -88,7 +102,7 @@ describe('Jugar', () => {
     mockPatrones()
   })
 
-  it('muestra CTA a /configurar si no hay sesión activa', () => {
+  it('abre modal de configuración en modo "iniciar" si no hay sesión activa', () => {
     vi.mocked(useSesionStore).mockReturnValue({
       iniciadaEn: null,
       condicionVictoria: { tipo: 'cartonLleno' },
@@ -102,21 +116,34 @@ describe('Jugar', () => {
     })
     mockCartones()
     renderJugar()
-    expect(screen.getByRole('link', { name: /configurar juego/i })).toBeInTheDocument()
+    const modal = screen.getByTestId('modal-seleccionar-condicion')
+    expect(modal).toBeInTheDocument()
+    expect(modal).toHaveAttribute('data-modo', 'iniciar')
   })
 
-  it('muestra el teclado numérico cuando hay sesión activa', () => {
+  it('muestra el tablero general cuando hay sesión activa', () => {
     mockSesion()
     mockCartones()
     renderJugar()
-    expect(screen.getByTestId('teclado-numerico')).toBeInTheDocument()
+    expect(screen.getByTestId('tablero-general')).toBeInTheDocument()
+  })
+
+  it('renderiza input, display de último número y panel flotante con sesión activa', () => {
+    mockSesion()
+    mockCartones()
+    renderJugar()
+    expect(screen.getByTestId('input-numero-sorteado')).toBeInTheDocument()
+    expect(screen.getByTestId('ultimo-numero-display')).toBeInTheDocument()
+    expect(screen.getByTestId('panel-patron-flotante')).toBeInTheDocument()
   })
 
   it('muestra la condición de victoria en el header', () => {
     mockSesion({ condicionVictoria: { tipo: 'n_marcados', valor: 5 } })
     mockCartones()
     renderJugar()
-    expect(screen.getByText('5 casillas marcadas')).toBeInTheDocument()
+    // Heading h1 del header contiene la condición — busca por rol para no
+    // conflictar con copias dentro del panel flotante (mockeado).
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('5 casillas marcadas')
   })
 
   it('muestra el conteo de números sorteados', () => {
@@ -156,8 +183,11 @@ describe('Jugar', () => {
     })
     mockCartones([cartonBase])
     renderJugar()
-    const celda2 = screen.getByText('2')
-    expect(celda2.className).not.toContain('bg-green-200')
+    // El tablero general está mockeado, así que el '2' que aparece corresponde
+    // al cartón (B[1]=2). Tomamos cualquier celda del DOM con ese texto y
+    // verificamos que no esté marcada como sorteada.
+    const celdas2 = screen.getAllByText('2')
+    expect(celdas2.some((c) => c.className.includes('bg-green-200'))).toBe(false)
   })
 
   it('muestra mensaje y enlace cuando no hay cartones', () => {
@@ -203,9 +233,12 @@ describe('Jugar', () => {
     mockCartones()
     renderJugar()
     fireEvent.click(screen.getByRole('button', { name: /ver historial/i }))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(screen.getByText('B')).toBeInTheDocument()
-    expect(screen.getByText('I')).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    // Buscamos dentro del dialog para no chocar con cartones/tablero del fondo.
+    const { getByText } = within(dialog)
+    expect(getByText('B')).toBeInTheDocument()
+    expect(getByText('I')).toBeInTheDocument()
   })
 
   it('llama cargarSesion al montar el componente', () => {

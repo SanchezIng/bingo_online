@@ -83,6 +83,29 @@ describe('establecerCondicion', () => {
     useSesionStore.getState().establecerCondicion({ tipo: 'cartonLleno' })
     expect(useSesionStore.getState().condicionVictoria).toEqual({ tipo: 'cartonLleno' })
   })
+
+  it('persiste el cambio cuando hay sesión activa', async () => {
+    const { guardarSesion } = await import('@/core/almacenamiento')
+    vi.mocked(guardarSesion).mockClear()
+
+    useSesionStore.getState().reiniciarSesion()
+    vi.mocked(guardarSesion).mockClear()
+
+    useSesionStore.getState().establecerCondicion({ tipo: 'n_marcados', valor: 8 })
+    expect(guardarSesion).toHaveBeenCalledTimes(1)
+    expect(guardarSesion).toHaveBeenCalledWith(
+      expect.objectContaining({ condicionActiva: { tipo: 'n_marcados', valor: 8 } }),
+    )
+  })
+
+  it('NO persiste cuando no hay sesión activa (iniciadaEn === null)', async () => {
+    const { guardarSesion } = await import('@/core/almacenamiento')
+    vi.mocked(guardarSesion).mockClear()
+
+    // resetSesion deja iniciadaEn = null
+    useSesionStore.getState().establecerCondicion({ tipo: 'n_marcados', valor: 3 })
+    expect(guardarSesion).not.toHaveBeenCalled()
+  })
 })
 
 describe('reiniciarSesion', () => {
