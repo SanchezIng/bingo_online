@@ -433,7 +433,25 @@ describe('Jugar — ranking dinámico', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText(/BINGO/)).toBeInTheDocument()
+    // Badge visible en la card + anuncio aria-live: ambos contienen "BINGO".
+    expect(screen.getAllByText(/BINGO/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/🏆 ¡BINGO!/)).toBeInTheDocument()
+  })
+
+  it('anuncia en aria-live="assertive" cuando hay un cartón ganador', () => {
+    mockSesion({
+      rankingComputed: vi.fn(() => [{ cartonId: cartonA.id, faltan: 0, ganado: true }]),
+    })
+    mockCartones([cartonA])
+
+    render(
+      <MemoryRouter>
+        <Jugar />
+      </MemoryRouter>,
+    )
+
+    const region = screen.getByText(/un cartón ha completado el patrón/i)
+    expect(region.closest('[aria-live="assertive"]')).not.toBeNull()
   })
 
   it('actualiza el orden cuando cambia el ranking al rerenderizar', () => {

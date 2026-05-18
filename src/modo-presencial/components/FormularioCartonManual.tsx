@@ -112,6 +112,8 @@ export default function FormularioCartonManual({ onGuardar }: FormularioCartonMa
                   onChange={(e) => handleChange(serieBingo, fila, e.target.value)}
                   placeholder={`${min}–${max}`}
                   aria-label={`${serieBingo} fila ${fila + 1}`}
+                  aria-invalid={errores.length > 0 || undefined}
+                  aria-describedby={errores.length > 0 ? 'errores-carton' : undefined}
                   className="min-h-[44px] w-full rounded border border-gray-300 px-1 py-1 text-center text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               )
@@ -122,7 +124,11 @@ export default function FormularioCartonManual({ onGuardar }: FormularioCartonMa
 
       {/* Mensajes de error */}
       {errores.length > 0 && (
-        <ul role="alert" className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <ul
+          id="errores-carton"
+          role="alert"
+          className="space-y-1 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        >
           {errores.map((e, i) => (
             <li key={i}>{e}</li>
           ))}

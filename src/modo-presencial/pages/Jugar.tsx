@@ -122,6 +122,13 @@ export default function Jugar() {
 
   const ranking = rankingComputed()
   const cartonMap = new Map(cartones.map((c) => [c.id, c]))
+  const ganadores = ranking.filter((r) => r.ganado)
+  const anuncioGanador =
+    ganadores.length === 1
+      ? '¡BINGO! Un cartón ha completado el patrón.'
+      : ganadores.length > 1
+        ? `¡BINGO! ${ganadores.length} cartones han completado el patrón.`
+        : ''
 
   function handleConfirmarReinicio() {
     reiniciarSesion()
@@ -130,6 +137,11 @@ export default function Jugar() {
 
   return (
     <div className="px-4 py-4 pb-24">
+      {/* Anuncio asertivo para lectores de pantalla cuando hay ganador */}
+      <div role="status" aria-live="assertive" className="sr-only">
+        {anuncioGanador}
+      </div>
+
       {/* Header: condición resumida + acciones */}
       <div className="mb-4 flex items-center justify-between gap-2">
         <div>
