@@ -1,24 +1,37 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-16 (cierre M3 + polish UX → tag `v0.4.0`)
-**Hito alcanzado:** **M3 — Juego presencial sin OCR completo**
-**Última subfase implementada:** **F5.4** (pausada en UI tras feature flag)
-**Próxima subfase:** **F6.1 — Convertir a PWA con vite-plugin-pwa**. F5.5/F5.6 pausadas indefinidamente.
+**Última actualización:** 2026-05-17 (cierre F6.1 — PWA instalable y offline)
+**Hito alcanzado:** **M3 — Juego presencial sin OCR completo** (M5 — PWA en producción avanzando)
+**Última subfase implementada:** **F6.1** (vite-plugin-pwa + manifest + íconos + PWAUpdatePrompt)
+**Próxima subfase:** **F6.2 — Sentry + Vercel Analytics**. F5.5/F5.6 pausadas indefinidamente.
 
 ---
 
 ## Progreso global
 
-- Fases completas en producción: **4 / 8** (F1 ✅, F2 ✅, F3 ✅, F4 ✅).
+- Fases completas en producción: **4 / 8** (F1 ✅, F2 ✅, F3 ✅, F4 ✅). F6 en curso (F6.1 ✅).
 - **F5 pausada**: F5.1–F5.4 implementadas pero `FEATURES.ocr=false` las oculta al usuario final. Ver `docs/adr/0004-ocr-pausado-v1.md`.
-- Subfases completadas: **14 / 17** (F1.1–F4.3 + F5.4).
-- Tests: **321 verdes**, lint y typecheck limpios, build OK.
-- Tag: **`v0.4.0`** local (cierre de M3, juego presencial sin OCR).
-- Porcentaje estimado: ~80%.
+- Subfases completadas: **15 / 17** (F1.1–F4.3 + F5.4 + F6.1).
+- Tests: **327 verdes** (+6 sobre M3), lint y typecheck limpios, build OK con PWA generada.
+- Tag: **`v0.4.0`** local (cierre de M3, juego presencial sin OCR). Próximo tag al cerrar F6.2.
+- Porcentaje estimado: ~85%.
 
 ---
 
 ## Resumen de lo construido hasta ahora
+
+### F6.1 — PWA con vite-plugin-pwa (completada 2026-05-17)
+
+App instalable y offline tras primera carga. SW generado, manifest válido, íconos 192/512/maskable + apple-touch-180.
+
+- **Deps:** `vite-plugin-pwa@1.3.0` (dev), `workbox-window@7.4.1` (runtime — peer requerida por `useRegisterSW`).
+- **`vite.config.ts`:** plugin `VitePWA({ registerType: 'prompt', manifest, workbox })`. Manifest con `lang: 'es'`, `display: 'standalone'`, `orientation: 'portrait'`, 3 íconos. Workbox `globIgnores: ['**/tesseract/**', '**/tesseract-core/**']` para excluir los ~12 MB del precache (OCR pausado). `runtimeCaching` con CacheFirst para `/tesseract*/` cuando OCR se reactive. `navigateFallback: '/index.html'` con denylist para `/tesseract*`.
+- **`src/shared/components/PWAUpdatePrompt.tsx`:** toast fixed bottom-center con `useRegisterSW` (de `virtual:pwa-register/react`). Botones "Recargar" / "Después". También cubre el caso `offlineReady`.
+- **`src/test-utils/pwa-register-stub.ts`:** stub del módulo virtual; aliasado en `vitest.config.ts` para que tests no rompan al importarlo.
+- **Íconos:** generados con `scripts/generate-pwa-icons.ps1` (PowerShell + System.Drawing — sin deps nuevas). Reproducible.
+- **`index.html`:** metadata iOS (`apple-mobile-web-app-capable`, `apple-touch-icon`, `apple-mobile-web-app-title`), `viewport-fit=cover`, `mobile-web-app-capable`.
+- **Build:** 234 módulos, precache 11 entries / 383.41 KiB, SW 8.5 KB. Assets de Tesseract siguen en `dist/` (vía `vite-plugin-static-copy`) pero fuera del precache.
+- **Tests:** 6 nuevos en `PWAUpdatePrompt.test.tsx`. **Total: 327 tests verdes**.
 
 ### F1.1 — Bootstrap (completada 2026-05-14)
 
@@ -251,6 +264,12 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **`CrearCartonOCR.tsx` — `useNavigate` mockeado en tests:** `vi.mock('react-router-dom', async (importOriginal) => { const actual = await importOriginal(); return { ...actual, useNavigate: () => navigateMock } })`. Patrón reutilizable.
 - **Dimensiones de imagen para OCR:** se capturan con `onLoad` del `<img>` en un `ref` (no state, evita re-renders). Fallback `{ w: 500, h: 500 }` si no se cargó (sólo afecta tests, en producción el usuario ve la preview antes de procesar).
 - **Mocking de funciones puras de `@/core/ocr` en tests de páginas:** `vi.mock('@/core/ocr', () => ({ procesarImagenOCR, estructurarEnGrilla, consolidarCandidatos: vi.fn() }))`. Cada test controla sus return values con `vi.mocked(fn).mockReturnValue(...)`.
+- **PWA — `registerType: 'prompt'`:** la app NO se recarga sola al detectar nueva versión. `PWAUpdatePrompt.tsx` muestra un toast y el usuario decide. Importante para no perder estado en mitad de un bingo.
+- **PWA — assets de Tesseract en `globIgnores` (no en runtimeCaching):** quedan en `dist/` (vía `vite-plugin-static-copy`) pero NO entran al precache. Si `FEATURES.ocr` se reactiva, `runtimeCaching` con `CacheFirst` los baja la primera vez. Reactivar OCR no requiere rebuild.
+- **PWA — `virtual:pwa-register/react` en tests:** alias en `vitest.config.ts` → `src/test-utils/pwa-register-stub.ts`. El stub devuelve estado neutral. Tests de `PWAUpdatePrompt.tsx` aún hacen `vi.mock('virtual:pwa-register/react', ...)` para controlar el valor.
+- **PWA — `workbox-window` como dependency (no devDep):** lo importa `useRegisterSW` en runtime, vive en el bundle del cliente. Sin él, `pnpm build` falla con "Rollup failed to resolve import".
+- **PWA — íconos generados con PowerShell:** `scripts/generate-pwa-icons.ps1` usa `System.Drawing` (sin deps nuevas). Diseño coherente con `favicon.svg` (header BINGO + grilla 5×5 + FREE central amarillo). Reemplazar manualmente los PNG si se quiere otro diseño.
+- **PWA — Vercel rewrites + archivos físicos:** Vercel respeta el filesystem antes de aplicar rewrites; `sw.js` y `workbox-*.js` se sirven directos aunque no estén en el negative lookahead. Si en F6.2+ se cambia el rewrite a incondicional, añadir `sw\.js`, `workbox-`, `/tesseract*` a las exclusiones.
 
 ---
 
@@ -274,37 +293,36 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F6.1)
+## Notas para la próxima sesión de Claude Code (F6.2)
 
-Al arrancar la sesión de **F6.1**, leer en este orden:
+Al arrancar la sesión de **F6.2**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `docs/adr/0004-ocr-pausado-v1.md` (contexto reciente sobre F5)
-4. `progreso/fase-5.4.md` (último handoff con detalles del flujo OCR en cuarentena)
-5. Sección F6.1 de `docs/guia_desarrollo.md`
+3. `progreso/fase-6.1.md` (último handoff)
+4. Sección F6.2 de `docs/guia_desarrollo.md`
 
-**Prerequisito de F6.1:** verificar que `pnpm test:run` pasa 284 tests verdes.
+**Prerrequisito de F6.2:** `pnpm test:run` pasa **327 tests verdes**.
 
-**F6.1 debe:**
+**F6.2 debe:**
 
-- Instalar `vite-plugin-pwa` + Workbox y configurar generación de service worker.
-- `manifest.webmanifest` con nombre, iconos (192×192, 512×512, maskable), theme color, display=standalone.
-- Estrategia offline para la app principal y assets estáticos.
-- Verificar Lighthouse PWA 100 y que la app es instalable.
+- Instalar Sentry SDK y Vercel Analytics.
+- Configurar Sentry con `sendDefaultPii: false` + `beforeSend` que filtra contenido de cartones, fotos, números de sesión, etc. (ver CLAUDE.md sección "Logging").
+- Añadir `VITE_SENTRY_DSN` a `.env.example` y a Vercel.
+- Tracking de uso con Vercel Analytics (cero PII).
 
-**Advertencias para F6.1:**
+**Pendientes de QA manual de F6.1 (no bloquean F6.2):**
 
-- `vite.config.ts` ya tiene `vite-plugin-static-copy` configurado para emitir los assets de Tesseract (~12 MB) al dist. Mientras `FEATURES.ocr=false` esos assets son peso muerto en el deploy. ADR-0004 dejó esto como pendiente — decidir antes de F6.1 si:
-  - a) Dejarlos (rápido de reactivar OCR el día que se decida).
-  - b) Condicionar `viteStaticCopy` a `FEATURES.ocr` (más build complejo).
-- `vercel.json` tiene `'wasm-unsafe-eval'` en script-src para WASM de Tesseract. Si OCR queda definitivamente fuera, evaluar quitarlo (endurece CSP). Por ahora, dejar.
-- El service worker NO debe precachear los archivos de Tesseract (~12 MB) si OCR está deshabilitado. Excluir explícitamente en la configuración del plugin-pwa.
+- Lighthouse PWA = 100 (correr en deploy de Vercel, no en localhost). La PWA solo se sirve correctamente en HTTPS — `pnpm preview` funciona pero conviene validar en el deploy real.
+- Instalación en Android Chrome y iOS Safari (verificar ícono y nombre).
+- Funcionamiento en modo avión tras primera carga.
+- Probar el prompt de actualización subiendo una nueva versión.
 
 **OCR — si vuelve a la mesa:**
 
 - Ver `docs/adr/0004-ocr-pausado-v1.md` — tabla con 5 alternativas (Gemini Vision recomendada por calidad/costo).
 - Cambiar `FEATURES.ocr` a `true` reactiva todo el flujo F5.4 inmediatamente (los tests siguen verdes).
+- El SW NO precachea los assets de Tesseract; `runtimeCaching` los descarga la primera vez con `CacheFirst` (configurado en F6.1).
 - F5.5 (calibración 4 esquinas) y F5.6 (top-N + debug) están fuera del plan corto.
 
 ---
@@ -313,6 +331,7 @@ Al arrancar la sesión de **F6.1**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-17 | **F6.1 completada**: PWA con vite-plugin-pwa. Manifest, íconos 192/512/maskable, SW con precache 383 KiB excluyendo Tesseract. PWAUpdatePrompt (modo `prompt`). 327 tests.    |
 | 2026-05-16 | **Cierre M3 → tag `v0.4.0` (local)**: juego presencial sin OCR completo y pulido. ROADMAP actualizado.                                                                        |
 | 2026-05-16 | Polish `/patrones`: cards visuales con MiniPatronGrid (compartido con panel flotante), nombre opcional con auto-generación "Patrón N". 321 tests.                             |
 | 2026-05-16 | Fix bug: cartones se perdían al recargar `/jugar` (faltaba cargarCartones/cargarPatrones en useEffect). Añadido botón "Modo juego" + flujo elegir patrón desde `/patrones`.   |

@@ -6,6 +6,7 @@ node_modules/
 # Builds
 dist/
 dist-ssr/
+dev-dist/
 build/
 *.local
 
@@ -60,6 +61,9 @@ desktop.ini
 *.sln
 *.sw?
 .history/
+
+# Claude Code (configuración local, no se versiona)
+.claude/settings.local.json
 
 # Vercel
 .vercel/

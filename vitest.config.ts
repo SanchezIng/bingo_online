@@ -7,6 +7,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // El módulo virtual de vite-plugin-pwa no existe en tests; lo aliasamos
+      // a un stub que devuelve estado neutral. Tests que necesiten otro
+      // comportamiento mockean el módulo explícitamente.
+      'virtual:pwa-register/react': fileURLToPath(
+        new URL('./src/test-utils/pwa-register-stub.ts', import.meta.url),
+      ),
     },
   },
   test: {
