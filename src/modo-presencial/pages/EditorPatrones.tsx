@@ -7,6 +7,8 @@ import { useSesionStore } from '@/lib/stores/sesion'
 import PatronCanvas from '@/modo-presencial/components/PatronCanvas'
 import MiniPatronGrid from '@/modo-presencial/components/MiniPatronGrid'
 import { grillaInicial } from '@/modo-presencial/components/patronUtils'
+import EmptyState from '@/shared/components/EmptyState'
+import { PatronIcon } from '@/shared/components/icons'
 
 const MAX_NOMBRE = 30
 
@@ -220,24 +222,22 @@ export default function EditorPatrones() {
       </div>
 
       {patrones.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 rounded-xl border-2 border-dashed border-gray-300 py-16 text-center">
-          <span className="text-4xl">🎯</span>
-          <p className="text-gray-600">
-            {enModoSeleccion
-              ? 'No tienes patrones guardados. Crea uno para empezar a jugar.'
-              : 'Aún no has creado ningún patrón.'}
-          </p>
-          <p className="text-sm text-gray-400">
-            Los patrones definen qué casillas deben marcarse para ganar el bingo.
-          </p>
-          <button
-            type="button"
-            onClick={abrirCrear}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-          >
-            Crear patrón
-          </button>
-        </div>
+        <EmptyState
+          icono={<PatronIcon />}
+          titulo={
+            enModoSeleccion ? 'No tienes patrones guardados' : 'Aún no has creado ningún patrón'
+          }
+          descripcion="Los patrones definen qué casillas deben marcarse para ganar. Por ejemplo: una línea, una cruz o las cuatro esquinas."
+          accion={
+            <button
+              type="button"
+              onClick={abrirCrear}
+              className="min-h-[44px] rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+            >
+              Crear patrón
+            </button>
+          }
+        />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {patrones.map((p: Patron) => (

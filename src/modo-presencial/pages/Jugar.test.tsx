@@ -102,7 +102,7 @@ describe('Jugar', () => {
     mockPatrones()
   })
 
-  it('abre modal de configuración en modo "iniciar" si no hay sesión activa', () => {
+  it('muestra pantalla de bienvenida con CTA si no hay sesión activa', () => {
     vi.mocked(useSesionStore).mockReturnValue({
       iniciadaEn: null,
       condicionVictoria: { tipo: 'cartonLleno' },
@@ -116,6 +116,27 @@ describe('Jugar', () => {
     })
     mockCartones()
     renderJugar()
+    // Sin click en CTA, el modal no debe estar abierto
+    expect(screen.queryByTestId('modal-seleccionar-condicion')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /empezar partida/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /configurar partida/i })).toBeInTheDocument()
+  })
+
+  it('abre modal en modo "iniciar" al hacer click en Configurar partida', () => {
+    vi.mocked(useSesionStore).mockReturnValue({
+      iniciadaEn: null,
+      condicionVictoria: { tipo: 'cartonLleno' },
+      numerosSorteados: [],
+      establecerCondicion: vi.fn(),
+      agregarNumeroSorteado: vi.fn(),
+      deshacerUltimoNumero: vi.fn(),
+      reiniciarSesion: vi.fn(),
+      cargarSesion: vi.fn(),
+      rankingComputed: vi.fn(() => []),
+    })
+    mockCartones()
+    renderJugar()
+    fireEvent.click(screen.getByRole('button', { name: /configurar partida/i }))
     const modal = screen.getByTestId('modal-seleccionar-condicion')
     expect(modal).toBeInTheDocument()
     expect(modal).toHaveAttribute('data-modo', 'iniciar')

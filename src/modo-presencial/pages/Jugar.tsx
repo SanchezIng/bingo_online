@@ -12,6 +12,8 @@ import InputNumeroSorteado from '../components/InputNumeroSorteado'
 import PanelPatronFlotante from '../components/PanelPatronFlotante'
 import ModalSeleccionarCondicion from '../components/ModalSeleccionarCondicion'
 import Modal from '@/shared/components/Modal'
+import EmptyState from '@/shared/components/EmptyState'
+import { CartonVacioIcon, JuegoIcon } from '@/shared/components/icons'
 
 function descripcionCondicion(condicion: CondicionVictoria, patrones: Patron[]): string {
   if (condicion.tipo === 'cartonLleno') return 'Cartón lleno'
@@ -35,6 +37,7 @@ export default function Jugar() {
   const [verHistorial, setVerHistorial] = useState(false)
   const [pedirConfirmaReinicio, setPedirConfirmaReinicio] = useState(false)
   const [modalCondicionAbierto, setModalCondicionAbierto] = useState(false)
+  const [setupAbierto, setSetupAbierto] = useState(false)
 
   function abrirModoJuego() {
     setModalCondicionAbierto(true)
@@ -54,22 +57,65 @@ export default function Jugar() {
     cargarPatrones()
   }, [cargarSesion, cargarCartones, cargarPatrones])
 
-  // Si no hay sesión activa, abrir el modal de configuración directamente
-  // en vez de un link a /configurar — el patrón se define justo antes de jugar.
+  // Sin sesión activa: pantalla de bienvenida con pasos. El modal se abre
+  // explícitamente con el botón — no automáticamente, para que el usuario
+  // entienda qué está por configurar.
   if (!iniciadaEn) {
+    const pasos = [
+      {
+        n: 1,
+        titulo: 'Crea tus cartones',
+        desc: 'Ingresa los números de tus cartones físicos en /cartones.',
+      },
+      {
+        n: 2,
+        titulo: 'Define cómo se gana',
+        desc: 'Patrón libre, cartón lleno o N casillas marcadas.',
+      },
+      {
+        n: 3,
+        titulo: 'Marca números en vivo',
+        desc: 'La app calcula quién está más cerca de ganar.',
+      },
+    ]
     return (
-      <div className="px-4 py-8">
-        <h1 className="mb-4 text-center text-2xl font-bold text-gray-800">Modo juego</h1>
-        <p className="mb-6 text-center text-gray-500">
-          Configura la condición de victoria para empezar.
-        </p>
-        <ModalSeleccionarCondicion
-          modo="iniciar"
-          onClose={() => {
-            // En modo "iniciar" no hay cómo cancelar sin sesión: redirigimos a /cartones
-            window.location.assign('/cartones')
-          }}
-        />
+      <div className="mx-auto max-w-md px-4 py-10">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div className="mb-3 text-blue-500/80">
+            <JuegoIcon size={72} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Empezar partida</h1>
+          <p className="mt-2 text-sm text-gray-500">En tres pasos estás listo para jugar.</p>
+        </div>
+
+        <ol className="mb-8 space-y-4">
+          {pasos.map((p) => (
+            <li key={p.n} className="flex gap-3 rounded-lg bg-gray-50 p-3">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white"
+              >
+                {p.n}
+              </span>
+              <div>
+                <p className="font-medium text-gray-800">{p.titulo}</p>
+                <p className="text-sm text-gray-500">{p.desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <button
+          type="button"
+          onClick={() => setSetupAbierto(true)}
+          className="min-h-[48px] w-full rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-95"
+        >
+          Configurar partida
+        </button>
+
+        {setupAbierto && (
+          <ModalSeleccionarCondicion modo="iniciar" onClose={() => setSetupAbierto(false)} />
+        )}
       </div>
     )
   }
@@ -154,12 +200,19 @@ export default function Jugar() {
       {/* 2) Cartones */}
       <section className="mb-6" aria-label="Cartones en juego">
         {cartones.length === 0 ? (
-          <p className="rounded-lg bg-gray-50 py-6 text-center text-sm text-gray-400">
-            Sin cartones.{' '}
-            <Link to="/cartones/nuevo" className="text-blue-600 hover:underline">
-              Añadir cartón
-            </Link>
-          </p>
+          <EmptyState
+            icono={<CartonVacioIcon size={48} />}
+            titulo="Sin cartones en juego"
+            descripcion="Añade al menos un cartón para que la app marque los números y calcule el ranking."
+            accion={
+              <Link
+                to="/cartones/nuevo"
+                className="inline-block min-h-[44px] rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                Añadir cartón
+              </Link>
+            }
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {ranking

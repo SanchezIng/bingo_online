@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useCartonesStore } from '@/lib/stores/cartones'
 import { FEATURES } from '@/config/features'
 import CartonGrid from '@/modo-presencial/components/CartonGrid'
+import EmptyState from '@/shared/components/EmptyState'
+import { CartonVacioIcon } from '@/shared/components/icons'
 
 export default function MisCartones() {
   const { cartones, cargarCartones, eliminarCarton } = useCartonesStore()
@@ -49,18 +51,19 @@ export default function MisCartones() {
       )}
 
       {cartones.length === 0 ? (
-        <div className="flex flex-col items-center py-16 text-center">
-          <p className="mb-4 text-lg font-medium text-gray-700">Aún no has creado ningún cartón.</p>
-          <p className="mb-6 text-sm text-gray-500">
-            Crea tu primer cartón manualmente ingresando los números de tu cartón físico.
-          </p>
-          <Link
-            to="/cartones/nuevo"
-            className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
-          >
-            Crear primer cartón
-          </Link>
-        </div>
+        <EmptyState
+          icono={<CartonVacioIcon />}
+          titulo="Aún no has creado ningún cartón"
+          descripcion="Ingresa los números de tu cartón físico para empezar. Puedes crear todos los que necesites."
+          accion={
+            <Link
+              to="/cartones/nuevo"
+              className="inline-block min-h-[44px] rounded-lg bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
+            >
+              Crear primer cartón
+            </Link>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {cartones.map((carton, idx) => (
