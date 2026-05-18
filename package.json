@@ -18,6 +18,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@sentry/react": "^10.53.1",
+    "@vercel/analytics": "^2.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.15.0",

@@ -1,24 +1,36 @@
 # Estado Actual del Proyecto
 
-**Última actualización:** 2026-05-17 (cierre F6.1 — PWA instalable y offline)
-**Hito alcanzado:** **M3 — Juego presencial sin OCR completo** (M5 — PWA en producción avanzando)
-**Última subfase implementada:** **F6.1** (vite-plugin-pwa + manifest + íconos + PWAUpdatePrompt)
-**Próxima subfase:** **F6.2 — Sentry + Vercel Analytics**. F5.5/F5.6 pausadas indefinidamente.
+**Última actualización:** 2026-05-17 (cierre F6.2 — Sentry + Vercel Analytics)
+**Hito alcanzado:** **M3 — Juego presencial sin OCR completo**. **M5 — PWA en producción alcanzado a nivel de código** (queda QA manual).
+**Última subfase implementada:** **F6.2** (Sentry con filtros de PII + Vercel Analytics + ErrorBoundary global)
+**Próxima subfase:** **F7 — Pulido final**.
 
 ---
 
 ## Progreso global
 
-- Fases completas en producción: **4 / 8** (F1 ✅, F2 ✅, F3 ✅, F4 ✅). F6 en curso (F6.1 ✅).
+- Fases completas en producción: **5 / 8** (F1 ✅, F2 ✅, F3 ✅, F4 ✅, F6 ✅).
 - **F5 pausada**: F5.1–F5.4 implementadas pero `FEATURES.ocr=false` las oculta al usuario final. Ver `docs/adr/0004-ocr-pausado-v1.md`.
-- Subfases completadas: **15 / 17** (F1.1–F4.3 + F5.4 + F6.1).
-- Tests: **327 verdes** (+6 sobre M3), lint y typecheck limpios, build OK con PWA generada.
-- Tag: **`v0.4.0`** local (cierre de M3, juego presencial sin OCR). Próximo tag al cerrar F6.2.
-- Porcentaje estimado: ~85%.
+- Subfases completadas: **16 / 17** (F1.1–F4.3 + F5.4 + F6.1 + F6.2).
+- Tests: **342 verdes** (+15 sobre F6.1), lint y typecheck limpios, build OK con PWA + Sentry generado.
+- Tag: **`v0.4.0`** local (cierre de M3, juego presencial sin OCR). Próximo tag al cerrar F7 (`v0.9.0` sugerido).
+- Porcentaje estimado: ~90%.
 
 ---
 
 ## Resumen de lo construido hasta ahora
+
+### F6.2 — Sentry + Vercel Analytics (completada 2026-05-17)
+
+Observabilidad activa con privacy-by-default. Errores van a Sentry con filtros estrictos; métricas de uso a Vercel Analytics; ErrorBoundary global con fallback amigable.
+
+- **Deps:** `@sentry/react@10.53.1`, `@vercel/analytics@2.0.1`.
+- **`src/lib/sentry.ts`:** `initSentry()` arranca solo con `VITE_SENTRY_DSN` definido y `VITE_APP_ENV !== 'development'`. Config: `sendDefaultPii: false`, `tracesSampleRate: 0.1`, `beforeSend`. `beforeSend` con dos niveles: clave sensible top-level en `event.extra`/`contexts` → `return null` (descarta evento entero); anidada en breadcrumbs/objetos → redacta a `[REDACTED]` para conservar stack trace. Lista negra: `carton`, `cartones`, `numeros`, `numerosSorteados`, `ocrImage`, `foto`, `fotoOCR`.
+- **`src/shared/components/ErrorFallback.tsx`:** UI del fallback global. Mensaje "Algo salió mal" + énfasis en que `localStorage` no se pierde + botón "Recargar la app" que llama `resetError()` + `window.location.reload()`.
+- **`src/main.tsx`:** `initSentry()` ANTES de `createRoot().render()`.
+- **`src/App.tsx`:** envuelto en `Sentry.ErrorBoundary fallback={ErrorFallback}`. `<Analytics />` añadido junto al `RouterProvider` y `<PWAUpdatePrompt />`.
+- **Bundle:** `index-*.js` sube de 349 KB a 369 KB (+20 KB sin gzip; +6 KB con gzip). Bien dentro de la meta < 250 KB gzip.
+- **Tests:** 15 nuevos en `sentry.test.ts` (`redactarSensibles`, `beforeSend`, `initSentry` con `vi.stubEnv`). **Total: 342 tests verdes**.
 
 ### F6.1 — PWA con vite-plugin-pwa (completada 2026-05-17)
 
@@ -270,6 +282,12 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 - **PWA — `workbox-window` como dependency (no devDep):** lo importa `useRegisterSW` en runtime, vive en el bundle del cliente. Sin él, `pnpm build` falla con "Rollup failed to resolve import".
 - **PWA — íconos generados con PowerShell:** `scripts/generate-pwa-icons.ps1` usa `System.Drawing` (sin deps nuevas). Diseño coherente con `favicon.svg` (header BINGO + grilla 5×5 + FREE central amarillo). Reemplazar manualmente los PNG si se quiere otro diseño.
 - **PWA — Vercel rewrites + archivos físicos:** Vercel respeta el filesystem antes de aplicar rewrites; `sw.js` y `workbox-*.js` se sirven directos aunque no estén en el negative lookahead. Si en F6.2+ se cambia el rewrite a incondicional, añadir `sw\.js`, `workbox-`, `/tesseract*` a las exclusiones.
+- **Sentry — `beforeSend` con dos comportamientos:** top-level en `event.extra`/`event.contexts` descarta evento (`return null`); anidado redacta a `[REDACTED]`. La lista negra de claves vive en `CLAVES_SENSIBLES` (export de `src/lib/sentry.ts`). Si se añade otra clave sensible (p.ej. en v2 con datos de pago), extender allí.
+- **Sentry — `initSentry()` solo en preview/production:** sin `VITE_SENTRY_DSN` o con `VITE_APP_ENV === 'development'` es no-op. Evita ruido en dev y permite correr local sin DSN.
+- **Sentry — mocking en tests:** `vi.mock('@sentry/react', () => ({ init: ... }))` + `vi.stubEnv('VITE_SENTRY_DSN', ...)` + `vi.unstubAllEnvs()` en `beforeEach`. Patrón reutilizable.
+- **Sentry — tipos `ErrorEvent`/`EventHint`:** vienen de `@sentry/core` pero se re-exportan vía `@sentry/react`. Importar siempre desde `@sentry/react` para mantener consistencia con el resto del módulo.
+- **ESLint — `_arg` no silencia `no-unused-vars`:** la config actual no tiene `argsIgnorePattern: '^_'`. Si un argumento no se usa, eliminarlo (no prefix-mask). Aplica a callbacks de Sentry, Tesseract logger, etc.
+- **App.tsx — orden de hijos en ErrorBoundary:** `RouterProvider` → `PWAUpdatePrompt` → `Analytics`. Si Sentry crashea, todo el árbol cae al fallback. `Analytics` es side-effect only.
 
 ---
 
@@ -293,30 +311,31 @@ Store de sesión de juego que une cartones + patrones + condición + números so
 
 ---
 
-## Notas para la próxima sesión de Claude Code (F6.2)
+## Notas para la próxima sesión de Claude Code (F7)
 
-Al arrancar la sesión de **F6.2**, leer en este orden:
+Al arrancar la sesión de **F7**, leer en este orden:
 
 1. `CLAUDE.md`
 2. Este archivo (`progreso/estado-actual.md`)
-3. `progreso/fase-6.1.md` (último handoff)
-4. Sección F6.2 de `docs/guia_desarrollo.md`
+3. `progreso/fase-6.2.md` (último handoff)
+4. Sección F7 de `docs/guia_desarrollo.md`
 
-**Prerrequisito de F6.2:** `pnpm test:run` pasa **327 tests verdes**.
+**Prerrequisito de F7:** `pnpm test:run` pasa **342 tests verdes**.
 
-**F6.2 debe:**
+**F7 (Pulido final) apunta a:**
 
-- Instalar Sentry SDK y Vercel Analytics.
-- Configurar Sentry con `sendDefaultPii: false` + `beforeSend` que filtra contenido de cartones, fotos, números de sesión, etc. (ver CLAUDE.md sección "Logging").
-- Añadir `VITE_SENTRY_DSN` a `.env.example` y a Vercel.
-- Tracking de uso con Vercel Analytics (cero PII).
+- Lighthouse Performance ≥ 90, Accessibility ≥ 90 (PWA ya cubierto en F6.1).
+- UX final, mensajes claros, estados de error, manejo de empty states.
+- Funcionalidad de export/import accesible desde la UI (ya existen funciones en `core/almacenamiento/`).
+- Tag sugerido al cerrar F7: **`v0.9.0`** (M6 — Beta lista).
 
-**Pendientes de QA manual de F6.1 (no bloquean F6.2):**
+**TODOs heredados de F6 (acumulados, no bloquean F7):**
 
-- Lighthouse PWA = 100 (correr en deploy de Vercel, no en localhost). La PWA solo se sirve correctamente en HTTPS — `pnpm preview` funciona pero conviene validar en el deploy real.
-- Instalación en Android Chrome y iOS Safari (verificar ícono y nombre).
-- Funcionamiento en modo avión tras primera carga.
-- Probar el prompt de actualización subiendo una nueva versión.
+- Crear proyecto Sentry en sentry.io, configurar `VITE_SENTRY_DSN` y `VITE_APP_ENV` en Vercel (Production y Preview).
+- Validar end-to-end con botón temporal "Probar Sentry" en preview, después eliminarlo.
+- (Opcional) Sourcemaps a Sentry vía `.github/workflows/release.yml` + `SENTRY_AUTH_TOKEN` en GitHub Secrets.
+- Lighthouse PWA = 100 en deploy Vercel HTTPS (no localhost).
+- Instalación Android Chrome + iOS Safari 16+, modo avión tras primera carga, prompt de actualización con dos deploys consecutivos.
 
 **OCR — si vuelve a la mesa:**
 
@@ -331,6 +350,7 @@ Al arrancar la sesión de **F6.2**, leer en este orden:
 
 | Fecha      | Evento                                                                                                                                                                        |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-17 | **F6.2 completada → F6 ✅**: Sentry (privacy-by-default) + Vercel Analytics + ErrorBoundary global. beforeSend descarta o redacta PII. 342 tests.                             |
 | 2026-05-17 | **F6.1 completada**: PWA con vite-plugin-pwa. Manifest, íconos 192/512/maskable, SW con precache 383 KiB excluyendo Tesseract. PWAUpdatePrompt (modo `prompt`). 327 tests.    |
 | 2026-05-16 | **Cierre M3 → tag `v0.4.0` (local)**: juego presencial sin OCR completo y pulido. ROADMAP actualizado.                                                                        |
 | 2026-05-16 | Polish `/patrones`: cards visuales con MiniPatronGrid (compartido con panel flotante), nombre opcional con auto-generación "Patrón N". 321 tests.                             |

@@ -19,10 +19,10 @@
 | ---------------- | --------------------------------------------- |
 | Fases totales    | 8                                             |
 | Subfases totales | 17                                            |
-| Completadas      | 15 / 17 (F5.5 y F5.6 pausadas — ver ADR-0004) |
-| % avance         | ~85%                                          |
+| Completadas      | 16 / 17 (F5.5 y F5.6 pausadas — ver ADR-0004) |
+| % avance         | ~90%                                          |
 | Versión actual   | **v0.4.0** (local) — hito M3 alcanzado        |
-| Tests verdes     | 327                                           |
+| Tests verdes     | 342                                           |
 
 ---
 
@@ -101,14 +101,14 @@
 
 ### F6: PWA y observabilidad
 
-**Estado:** 🔄 En curso — **próxima subfase activa: F6.2**
+**Estado:** ✅ Completada — **próxima fase activa: F7**
 
 **Subfases:**
 
 - ✅ F6.1 — Convertir a PWA con vite-plugin-pwa
-- ⏳ F6.2 — Sentry + Vercel Analytics
+- ✅ F6.2 — Sentry + Vercel Analytics
 
-**Entregable:** app instalable y funcionando offline. Tracking de errores activo.
+**Entregable cumplido:** app instalable y funcionando offline (F6.1), tracking de errores activo con filtros de PII y métricas de uso (F6.2). Pendiente QA manual (Lighthouse en deploy real, instalación móvil) y configurar DSN de Sentry en Vercel.
 
 ---
 
@@ -184,17 +184,18 @@ Requiere nuevo project-kickstart. Decisiones a re-evaluar al llegar:
 
 > Anotar fecha y commit cada vez que se cierra una subfase.
 
-| Fecha      | Subfase                  | Commit    | Notas                                                                                  |
-| ---------- | ------------------------ | --------- | -------------------------------------------------------------------------------------- |
-| 2026-05-14 | F1.1 + F1.2              | varios    | Setup completo, deploy a Vercel.                                                       |
-| 2026-05-15 | F2.1 + F2.2              | varios    | Cartones funcionales con persistencia. 79 tests.                                       |
-| 2026-05-15 | F3.1 + F3.2 + F3.3       | varios    | Motor puro + editor patrones + sesión integrada. 169 tests.                            |
-| 2026-05-15 | F4.1 + F4.2 + F4.3       | varios    | Juego presencial funcional end-to-end. 219 tests.                                      |
-| 2026-05-15 | F5.1 + F5.2 + F5.3       | varios    | OCR primera versión (bbox heurístico). 272 tests.                                      |
-| 2026-05-15 | F5.4 + pausa             | `173ffc3` | F5.4 rediseño OCR con preprocess + OCR por celda. Pausado tras prueba.                 |
-| 2026-05-16 | Polish UX + M3           | `e93c278` | Rediseño /jugar, panel flotante, cards visuales. 321 tests.                            |
-| 2026-05-16 | **Cierre M3 → `v0.4.0`** | (este)    | Tag local creado. Próximo: F6.1 (PWA).                                                 |
-| 2026-05-17 | F6.1                     | (este)    | PWA con vite-plugin-pwa. Manifest, íconos, SW (precache excluye Tesseract). 327 tests. |
+| Fecha      | Subfase                  | Commit    | Notas                                                                                                     |
+| ---------- | ------------------------ | --------- | --------------------------------------------------------------------------------------------------------- |
+| 2026-05-14 | F1.1 + F1.2              | varios    | Setup completo, deploy a Vercel.                                                                          |
+| 2026-05-15 | F2.1 + F2.2              | varios    | Cartones funcionales con persistencia. 79 tests.                                                          |
+| 2026-05-15 | F3.1 + F3.2 + F3.3       | varios    | Motor puro + editor patrones + sesión integrada. 169 tests.                                               |
+| 2026-05-15 | F4.1 + F4.2 + F4.3       | varios    | Juego presencial funcional end-to-end. 219 tests.                                                         |
+| 2026-05-15 | F5.1 + F5.2 + F5.3       | varios    | OCR primera versión (bbox heurístico). 272 tests.                                                         |
+| 2026-05-15 | F5.4 + pausa             | `173ffc3` | F5.4 rediseño OCR con preprocess + OCR por celda. Pausado tras prueba.                                    |
+| 2026-05-16 | Polish UX + M3           | `e93c278` | Rediseño /jugar, panel flotante, cards visuales. 321 tests.                                               |
+| 2026-05-16 | **Cierre M3 → `v0.4.0`** | (este)    | Tag local creado. Próximo: F6.1 (PWA).                                                                    |
+| 2026-05-17 | F6.1                     | `3c456cd` | PWA con vite-plugin-pwa. Manifest, íconos, SW (precache excluye Tesseract). 327 tests.                    |
+| 2026-05-17 | F6.2 → F6 ✅             | (este)    | Sentry (privacy-by-default, beforeSend con filtros) + Vercel Analytics + ErrorBoundary global. 342 tests. |
 
 ---
 
